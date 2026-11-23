@@ -1,0 +1,328 @@
+================================================================================
+           TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L. - SISTEMA WEB INTEGRAL
+                 DOCUMENTO TÉCNICO DE ARQUITECTURA, PARÁMETROS Y VARIABLES
+================================================================================
+Fecha de Emisión: Noviembre 2024
+Versión: 2.4.0 (Edición Producción & Auditoría)
+Empresa: Terranova Gestión Inmobiliaria S. de R.L.
+RTN: 08019995123456
+Sede Principal: Torre Corporativa Morazán, Nivel 7, Tegucigalpa M.D.C., Honduras
+Contacto Técnico: Kenneth Adonay Zúniga / Anthony Rafael Alfaro
+
+--------------------------------------------------------------------------------
+1. RESUMEN EJECUTIVO Y FUNCIONALIDAD DEL SISTEMA
+--------------------------------------------------------------------------------
+El Sistema Web Terranova es una solución tecnológica integral diseñada para 
+digitalizar y automatizar los procesos operativos, comerciales, jurídicos y 
+financieros de una empresa de corretaje y administración de bienes raíces.
+
+Módulos Principales:
+1.1 Catálogo Inmobiliario Abierto:
+    - Exploración pública de propiedades residenciales, comerciales y terrenos.
+    - Filtros avanzados por tipo de inmueble, tipo de transacción (Alquiler / Venta), 
+      rango de precios en USD y búsqueda por palabras clave o código único.
+    - Fichas técnicas detalladas con especificaciones, medidas, amenidades y 
+      formulario de solicitud de citas presenciales o virtuales.
+
+1.2 Panel de Invitados y Acceso Público:
+    - Diseñado exclusivamente para permitir la visualización del catálogo y el 
+      acceso al sistema mediante inicio de sesión o registro de nueva cuenta.
+    - Registro público restringido a dos perfiles autorizados: Cliente (buscador 
+      o comprador) e Inquilino (arrendatario de inmuebles).
+
+1.3 Portal Personal de Inquilino:
+    - Área privada personalizada según la identidad del usuario autenticado.
+    - Agenda personal de citas y solicitudes de revisión técnica.
+    - Canal de mensajería directa con el asesor inmobiliario asignado.
+    - Consulta de contrato de arrendamiento activo, canon de renta mensual y fechas.
+    - Pasarela de pago en línea de canon de arrendamiento (tarjetas de crédito, 
+      débito y transferencia bancaria directa).
+    - Reporte y seguimiento de incidencias o reparaciones de mantenimiento.
+
+1.4 Panel de Administrador con Control Total (RBAC):
+    - Supervisión de indicadores clave de desempeño (KPIs): ingresos recaudados, 
+      gastos operativos por mantenimiento, utilidad neta y tasa de ocupación.
+    - Control de inventario inmobiliario con generación automática de identificadores.
+    - Gestión de usuarios: reasignación de roles por parte del administrador sin 
+      posibilidad de alterar datos privados ya ingresados por los usuarios, y 
+      facultad para activar o dar de baja (desactivar) cuentas.
+    - Generador y emisor automatizado de contratos de arrendamiento con comparecencia 
+      de inquilino (ID, teléfono, correo) y encargado administrativo.
+    - Matriz granular de permisos por rol (Role-Based Access Control).
+    - Historial inmutable de auditoría de operaciones (RF-0801).
+
+1.5 Módulo de Formatos de Impresión & Fichas Técnicas (Exclusivo Administrador):
+    - Generación y vista previa de contratos de arrendamiento con validez legal.
+    - Circulación y destaque formal de la cuenta bancaria oficial receptora de pagos.
+    - Editor en vivo para modificar los datos de atención al cliente (teléfonos, 
+      WhatsApp, horario, correos, dirección) sin necesidad de conocimientos técnicos 
+      ni edición manual de código fuente.
+    - Gestor de cuentas bancarias de la empresa (agregar bancos, editar cuentas y 
+      designar la cuenta receptora por defecto que circulará en los contratos).
+    - Fichas técnicas oficiales y comprobantes fiscales con folio único.
+
+--------------------------------------------------------------------------------
+2. PARÁMETROS OPERATIVOS DEL SISTEMA
+--------------------------------------------------------------------------------
+El sistema opera bajo los siguientes parámetros de negocio y configuración:
+
+- Moneda Base: Dólar Estadounidense (USD) y Lempiras (HNL).
+- Tasa Estándar de Comisión por Venta: 4.5% deducible sobre el valor final de venta.
+- Comisión por Colocación de Arrendamiento: Equivalente a 1 mes de renta completa.
+- Días de Gracia para Pago de Renta: 5 días calendario antes de aplicar recargo por mora.
+- Algoritmo de Generación de Códigos de Inmuebles:
+    * Prefijo según tipo:
+      - Casa -> CAS-[Correlativo 3 dígitos] (ej: CAS-001, CAS-002)
+      - Apartamento -> APT-[Correlativo 3 dígitos] (ej: APT-001)
+      - Terreno -> TER-[Correlativo 3 dígitos] (ej: TER-001)
+      - Local Comercial -> LOC-[Correlativo 3 dígitos] (ej: LOC-001)
+      - Villa -> VIL-[Correlativo 3 dígitos] (ej: VIL-001)
+- Numeración de Contratos: CTR-[Año]-[Correlativo aleatorio único de 3 dígitos] (ej: CTR-2024-089).
+- Numeración de Recibos de Pago: REC-[Año]-[Correlativo de 4 dígitos] (ej: REC-2024-4819).
+- Códigos de Transacción Bancaria: TXN-[5 dígitos aleatorios]-[Método Pago] (ej: TXN-49102-TAR).
+- Números de Cuenta de Usuario: CTA-[Rol 3 letras]-[Correlativo] (ej: CTA-ADM-001, CTA-INQ-305).
+- Datos Oficiales de Atención al Cliente Predeterminados:
+    * PBX: +504 2238-9000
+    * WhatsApp: +504 9876-5432
+    * Email: atencionalcliente@terranova.hn
+    * Horario de Atención: Lunes a Viernes de 8:00 AM a 5:30 PM | Sábados de 8:00 AM a 1:00 PM
+    * Dirección: Torre Corporativa Morazán, Nivel 7, Bulevar Morazán, Tegucigalpa, M.D.C.
+
+--------------------------------------------------------------------------------
+3. RESTRICCIONES DE ACCESO, SEGURIDAD Y PRIVACIDAD
+--------------------------------------------------------------------------------
+El sistema implementa políticas estrictas de seguridad de la información:
+
+3.1 Restricción de Registro Público:
+    - En el formulario de registro de nuevas cuentas, únicamente están disponibles 
+      los roles 'client' (Cliente) y 'tenant' (Inquilino).
+    - Los roles privilegiados ('admin', 'agent', 'owner', 'contractor') NO pueden 
+      ser creados mediante autoregistro público.
+
+3.2 Control Exclusivo de Roles por el Administrador:
+    - Solo el usuario con rol 'admin' puede cambiar el tipo de cuenta de un usuario.
+    - RESTRICCIÓN DE INTEGRIDAD: El administrador solo puede modificar el selector 
+      de rol ('client', 'tenant', 'owner', 'agent', 'admin', 'contractor') y el 
+      estado de cuenta ('active' o 'inactive'). El administrador NO tiene acceso ni 
+      permiso para editar los datos personales que el usuario ingresó originalmente 
+      (nombre, correo electrónico, teléfono o contraseña).
+
+3.3 Desactivación y Bloqueo de Cuentas:
+    - El administrador cuenta con la función de dar de baja o suspender una cuenta. 
+      Al desactivarse, la cuenta pasa al estado 'inactive', impidiendo operaciones.
+    - El administrador no puede desactivar su propia sesión activa para evitar 
+      bloqueos accidentales del sistema.
+
+3.4 Segregación de Información en el Portal de Inquilino:
+    - Cada inquilino visualiza exclusivamente la información vinculada a su cuenta.
+    - Las citas, hilos de mensajes, contratos y reportes se filtran de forma estricta 
+      por el identificador o correo electrónico del inquilino autenticado.
+    - Si un inquilino recién registrado aún no cuenta con contrato formal emitido, 
+      el sistema le muestra un mensaje informativo de bienvenida y le permite agendar 
+      citas o consultar a su asesor, sin exponer datos de otros clientes.
+
+3.5 Cifrado de Contraseñas y Seguridad:
+    - Cifrado de credenciales en reposo utilizando algoritmo de dispersión criptográfica 
+      SHA-256 y compatibilidad con estándar bcrypt ($2a$12$).
+    - Validación de fuerza mínima de contraseña (mínimo 6 caracteres).
+
+3.6 Restricción del Pie de Página Público:
+    - El pie de página público visible para todos los usuarios contiene ÚNICAMENTE:
+      1) Datos oficiales de la empresa (Nombre, Eslogan, RTN, Dirección).
+      2) Canales de atención al cliente (Teléfono PBX, WhatsApp, Correo, Horarios).
+      3) Enlaces a Políticas de Privacidad y Términos y Condiciones Legales.
+    - Se excluyen del pie de página público badges técnicos innecesarios como 
+      certificaciones SSL forzadas, claves de APIs o datos internos de desarrollo, 
+      los cuales quedan archivados en esta carpeta de documentación técnica.
+
+--------------------------------------------------------------------------------
+4. DICCIONARIO DE DATOS: VARIABLES, ESTRUCTURAS Y TIPOS UTILIZADOS
+--------------------------------------------------------------------------------
+
+4.1 UserRole (Tipo Enumerado)
+    - Definición: 'admin' | 'agent' | 'owner' | 'tenant' | 'client' | 'contractor' | 'guest'
+    - Descripción: Perfiles de autorización que determinan el nivel de acceso en la matriz RBAC.
+
+4.2 User (Entidad de Usuario)
+    - id: string (Identificador alfanumérico único, ej: 'usr-1')
+    - name: string (Nombre completo del usuario registrado)
+    - email: string (Correo electrónico único y normalizado en minúsculas)
+    - phone: string (Número telefónico de contacto en formato E.164 o local)
+    - role: UserRole (Rol asignado al usuario)
+    - status: 'active' | 'inactive' (Estado operativo de la cuenta)
+    - isSubscribed: boolean (Indicador de suscripción activa para servicios preferenciales)
+    - avatar: string [opcional] (URL de fotografía de perfil)
+    - accountNumber: string [opcional] (Identificador de cuenta contable, ej: 'CTA-INQ-305')
+    - password: string [opcional] (Contraseña cifrada con algoritmo criptográfico)
+
+4.3 BankAccount (Entidad de Cuenta Bancaria)
+    - id: string (Identificador de la cuenta bancaria)
+    - bankName: string (Nombre de la entidad bancaria, ej: 'BAC Credomatic')
+    - accountNumber: string (Número de cuenta para transferencias)
+    - accountType: string (Tipo de producto bancario, ej: 'Monetaria USD')
+    - accountHolder: string (Nombre del beneficiario / titular de la cuenta)
+    - currency: 'USD' | 'HNL' (Divisa de la cuenta bancaria)
+    - isDefaultReceiving: boolean (Marca que designa la cuenta que circulará en los contratos)
+    - swiftCode: string [opcional] (Código SWIFT para giros internacionales)
+
+4.4 CompanySettings (Parámetros Globales de la Empresa)
+    - companyName: string (Razón social oficial de la empresa)
+    - slogan: string (Lema institucional de la marca)
+    - rtn: string (Registro Tributario Nacional)
+    - address: string (Dirección física corporativa de la sede)
+    - phone: string (Teléfono PBX de atención al cliente)
+    - whatsapp: string (Línea de WhatsApp de atención y soporte)
+    - email: string (Correo oficial de recepción y atención)
+    - customerServiceHours: string (Horario de funcionamiento y recepción)
+    - bankAccounts: BankAccount[] (Listado de cuentas bancarias autorizadas)
+
+4.5 Property (Entidad de Inmueble)
+    - id: string (Identificador único de propiedad, ej: 'prop-1')
+    - code: string (Código identificador generado automáticamente, ej: 'CAS-001')
+    - title: string (Nombre comercial del inmueble)
+    - address: string (Dirección geográfica)
+    - city: string (Ciudad o municipio)
+    - neighborhood: string (Colonia o sector residencial)
+    - size: number (Superficie total en metros cuadrados m²)
+    - propertyType: 'Casa' | 'Apartamento' | 'Terreno' | 'Local Comercial' | 'Villa'
+    - transactionType: 'Alquiler' | 'Venta'
+    - price: number (Precio de venta o canon de arrendamiento en USD)
+    - currency: 'USD' | 'HNL' (Moneda de la transacción)
+    - status: 'Disponible' | 'Alquilada' | 'Vendida' | 'En Mantenimiento'
+    - bedrooms: number (Cantidad de habitaciones)
+    - bathrooms: number (Cantidad de cuartos de baño completos o medios)
+    - parkingSpots: number (Capacidad de estacionamientos vehiculares)
+    - description: string (Reseña técnica y comercial del inmueble)
+    - features: string[] (Arreglo de comodidades y características)
+    - images: string[] (Arreglo de URLs de imágenes en alta resolución)
+    - ownerId: string (Identificador del propietario registrado)
+    - ownerName: string (Nombre del propietario)
+    - assignedAgentId: string (Identificador del asesor inmobiliario asignado)
+    - assignedAgentName: string (Nombre del asesor asignado)
+    - yearBuilt: number (Año de edificación o entrega del inmueble)
+
+4.6 LeaseContract (Entidad de Contrato de Arrendamiento)
+    - id: string (Identificador interno del contrato, ej: 'ctr-001')
+    - contractNumber: string (Número de expediente legal, ej: 'CTR-2024-089')
+    - propertyId: string (Identificador de la propiedad objeto de arriendo)
+    - propertyTitle: string (Título del inmueble arrendado)
+    - propertyCode: string (Código identificador de la propiedad)
+    - tenantId: string (Identificador del usuario inquilino)
+    - tenantName: string (Nombre completo del arrendatario)
+    - tenantEmail: string (Correo electrónico del arrendatario)
+    - tenantPhone: string (Teléfono directo del arrendatario)
+    - tenantNationalId: string (DNI / Cédula del arrendatario compareciente)
+    - managerName: string (Nombre del encargado / administrador inmobiliario)
+    - managerEmail: string (Correo electrónico del encargado)
+    - managerPhone: string (Teléfono del encargado)
+    - receivingBankAccount: string (Número de cuenta bancaria oficial que recibe el pago)
+    - receivingBankName: string (Nombre del banco que recibe los fondos)
+    - paymentMethodUsed: string (Método de pago pactado, ej: 'Transferencia Bancaria')
+    - ownerId: string (Identificador del arrendador propietario)
+    - ownerName: string (Nombre del propietario)
+    - startDate: string (Fecha de inicio de vigencia, formato ISO YYYY-MM-DD)
+    - endDate: string (Fecha de vencimiento de vigencia, formato ISO YYYY-MM-DD)
+    - monthlyRent: number (Monto de renta pactado por periodo mensual)
+    - depositAmount: number (Monto de depósito en garantía entregado)
+    - currency: 'USD' | 'HNL' (Divisa de pago)
+    - status: 'Vigente' | 'Por Vencer' | 'Finalizado' | 'En Mora'
+    - agentName: string (Nombre del agente responsable)
+    - isSignedDigitally: boolean (Indicador de validación de firma electrónica)
+    - signedDate: string [opcional] (Fecha en que se estampó la firma)
+    - clauses: string[] (Arreglo de cláusulas legales y condiciones pactadas)
+
+4.7 PaymentTransaction (Entidad de Transacción de Pago)
+    - id: string (Identificador único de pago, ej: 'pay-001')
+    - receiptNumber: string (Folio correlativo del comprobante, ej: 'REC-2024-001')
+    - propertyId: string (Identificador del inmueble asociado)
+    - propertyTitle: string (Nombre de la propiedad)
+    - contractId: string (Identificador del contrato vinculado)
+    - payerName: string (Nombre de quien realiza el desembolso)
+    - payerEmail: string (Correo del pagador)
+    - amount: number (Monto cancelado)
+    - currency: 'USD' | 'HNL' (Divisa)
+    - date: string (Fecha de ejecución del pago)
+    - type: 'Pago Renta' | 'Depósito Garantía' | 'Comisión Venta' | 'Servicios'
+    - paymentMethod: 'Tarjeta de Crédito' | 'Tarjeta de Débito' | 'Transferencia Bancaria'
+    - status: 'Completado' | 'Pendiente' | 'Rechazado'
+    - referenceCode: string (Código de autorización financiera)
+    - monthCovered: string [opcional] (Periodo mensual cancelado, ej: 'Noviembre 2024')
+
+4.8 MaintenanceRequest (Entidad de Solicitud de Reparación)
+    - id: string (Identificador de solicitud, ej: 'mnt-001')
+    - ticketNumber: string (Número de ticket de soporte, ej: 'MNT-2024-001')
+    - propertyId: string (Identificador del inmueble)
+    - propertyTitle: string (Nombre del inmueble)
+    - propertyAddress: string (Dirección del inmueble)
+    - requestedBy: string (Nombre de quien solicita el trabajo)
+    - requesterRole: 'tenant' | 'owner' | 'agent'
+    - date: string (Fecha de reporte)
+    - type: 'Preventivo' | 'Correctivo' | 'Emergencia'
+    - priority: 'Alta' | 'Media' | 'Baja'
+    - status: 'Pendiente' | 'En Proceso' | 'Reparado' | 'Cancelado'
+    - description: string (Descripción de la avería o solicitud)
+    - estimatedCost: number [opcional] (Presupuesto proyectado)
+    - actualCost: number [opcional] (Costo final liquidado)
+    - contractorName: string [opcional] (Técnico o empresa contratista asignada)
+    - resolutionNotes: string [opcional] (Dictamen técnico de resolución)
+
+4.9 CalendarEvent (Entidad de Evento de Calendario y Citas)
+    - id: string (Identificador único de evento)
+    - title: string (Título del evento o cita)
+    - date: string (Fecha en formato YYYY-MM-DD)
+    - time: string (Hora en formato militar HH:mm)
+    - type: 'Visita Inmueble' | 'Reunión Propietario' | 'Firma Contrato' | 'Mantenimiento'
+    - priority: 'Alta' | 'Media' | 'Baja'
+    - assignedTo: string (Nombre del asesor o administrador responsable)
+    - propertyTitle: string [opcional] (Inmueble objeto del evento)
+    - clientName: string [opcional] (Nombre del cliente o inquilino participante)
+    - clientEmail: string [opcional] (Correo del participante)
+    - notes: string [opcional] (Notas preparatorias y acuerdos)
+
+4.10 MessageThread y Message (Entidades de Mensajería Interna)
+    - MessageThread:
+      * id: string (Identificador del hilo)
+      * contactName: string (Nombre del contacto participante)
+      * contactEmail: string (Correo del contacto)
+      * contactPhone: string (Teléfono)
+      * propertyTitle: string (Propiedad asociada al hilo de conversación)
+      * unread: boolean (Indicador de mensajes pendientes de lectura)
+      * messages: Message[] (Historial cronológico de mensajes)
+    - Message:
+      * id: string (Identificador de mensaje)
+      * sender: 'user' | 'support' | 'client' (Emisor del mensaje)
+      * senderName: string (Nombre visible del emisor)
+      * text: string (Cuerpo del mensaje)
+      * timestamp: string (Hora o fecha de envío)
+
+4.11 SystemLog (Entidad de Auditoría e Inmutabilidad RF-0801)
+    - id: string (Identificador del log)
+    - timestamp: string (Marca temporal precisa de la operación)
+    - action: string (Verbo u operación realizada, ej: 'Cambio de Rol')
+    - module: string (Módulo afectado, ej: 'Usuarios', 'Contratos', 'Bancos')
+    - userName: string (Nombre del usuario que ejecutó la acción)
+    - role: UserRole (Rol que ostentaba el ejecutor al momento de la acción)
+    - details: string (Detalle pormenorizado de los datos modificados)
+
+--------------------------------------------------------------------------------
+5. MECANISMO DE PERSISTENCIA Y SINCRONIZACIÓN LOCAL
+--------------------------------------------------------------------------------
+El sistema utiliza almacenamiento estructurado en el navegador cliente mediante 
+LocalStorage bajo las claves de aislamiento:
+- 'terranova_users': Colección de usuarios, credenciales y estados.
+- 'terranova_properties': Catálogo de propiedades e inventario.
+- 'terranova_contracts': Contratos de arrendamiento y firmas.
+- 'terranova_settings': Configuración global, datos de atención y cuentas bancarias.
+- 'terranova_payments': Historial de transacciones financieras.
+- 'terranova_maintenance': Órdenes de trabajo y reparaciones.
+- 'terranova_calendar': Citas y agendas de trabajo de asesores e inquilinos.
+- 'terranova_logs': Registro inmutable de auditoría forense.
+
+Esta arquitectura garantiza que las modificaciones realizadas por el administrador 
+(como la edición de los números de atención al cliente, la designación de cuentas 
+bancarias receptoras o la reasignación de roles) persistan entre recargas de página 
+sin requerir reinstalación.
+
+================================================================================
+FIN DEL DOCUMENTO TÉCNICO - TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.
+================================================================================

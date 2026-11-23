@@ -1,0 +1,779 @@
+-- ============================================================================
+-- TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.
+-- SCRIPT COMPLETO DE BASE DE DATOS RELACIONAL (DDL & DML)
+-- COMPATIBILIDAD: MySQL 8.0+ / MariaDB 10.4+ (XAMPP) / PostgreSQL 14+
+-- ============================================================================
+-- NOTAS TÉCNICAS DE NORMALIZACIÓN Y TIPOS DE DATOS (HONDURAS):
+-- 1. IDENTIFICACIÓN Y LLAVES PRIMARIAS (id / national_id):
+--    - En este esquema, las llaves primarias estándar son de tipo INT / BIGINT AUTO_INCREMENT
+--      para máximo rendimiento y optimización de índices relacionales en el motor.
+--    - Para el Documento Nacional de Identificación (DNI de Honduras), la ley del RNP
+--      (Registro Nacional de las Personas) establece que consta de exactamente 13 dígitos 
+--      numéricos (ej: 0801-1995-12345 sin guiones: 0801199512345).
+--    - Se implementan dos columnas normalizadas:
+--      a) 'national_id' CHAR(13) con restricción CHECK estricta: exactamente 13 dígitos numéricos.
+--      b) 'national_id_num' BIGINT para almacenamiento puro de 13 dígitos en formato numérico entero.
+-- 2. TELÉFONOS (phone / phone_number):
+--    - Almacenamiento numérico puro: 'phone_number' BIGINT para búsquedas y telefonía E.164 (ej: 50498765432).
+--    - Almacenamiento con formato: 'phone' VARCHAR(20) con restricción CHECK estricta que solo
+--      permite dígitos y los caracteres '+' y '-' como separadores válidos (ej: +504-9876-5432 o 2238-9000),
+--      prohibiendo espacios, paréntesis o letras.
+-- 3. SEGURIDAD DE CONTRASEÑAS:
+--    - Contraseñas cifradas mediante algoritmo bcrypt (12 rondas) y hash criptográfico SHA-256.
+-- ============================================================================
+
+-- 1. CREACIÓN DE LA BASE DE DATOS
+DROP DATABASE IF EXISTS terranova_inmobiliaria;
+CREATE DATABASE terranova_inmobiliaria 
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;
+
+USE terranova_inmobiliaria;
+
+-- ============================================================================
+-- 2. DEFINICIÓN DE TABLAS (DDL)
+-- ============================================================================
+
+-- 2.1 Tabla de Roles del Sistema
+CREATE TABLE roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    role_key VARCHAR(30) NOT NULL UNIQUE,
+    name VARCHAR(60) NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.2 Tabla de Usuarios y Credenciales Cifradas
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_code VARCHAR(36) NOT NULL UNIQUE, -- Código UUID / alias de sistema (ej: usr-1)
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    -- Identificación Nacional de Honduras (DNI de exactamente 13 dígitos numéricos)
+    national_id CHAR(13) NOT NULL UNIQUE CHECK (CHAR_LENGTH(national_id) = 13 AND national_id REGEXP '^[0-9]{13}$'),
+    national_id_num BIGINT NOT NULL UNIQUE, -- Representación numérica entera de 13 dígitos
+    -- Teléfono con separadores estrictos '+' y '-'
+    phone VARCHAR(25) NOT NULL CHECK (phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    phone_number BIGINT NOT NULL, -- Teléfono en formato entero numérico
+    role_key VARCHAR(30) NOT NULL,
+    account_number VARCHAR(30) UNIQUE,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    is_subscribed BOOLEAN NOT NULL DEFAULT FALSE,
+    avatar_url VARCHAR(500),
+    -- Contraseña cifrada con algoritmo seguro bcrypt de 12 rondas
+    password_hash VARCHAR(255) NOT NULL,
+    -- Hash adicional SHA-256 para validaciones de integridad RNF-204
+    sha256_hash CHAR(64) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_key) REFERENCES roles(role_key) ON UPDATE CASCADE
+);
+
+-- 2.3 Tabla de Parámetros Globales de la Empresa
+CREATE TABLE company_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    company_name VARCHAR(150) NOT NULL,
+    slogan VARCHAR(120) NOT NULL,
+    rtn VARCHAR(30) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    phone VARCHAR(25) NOT NULL CHECK (phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    phone_number BIGINT NOT NULL,
+    whatsapp VARCHAR(25) NOT NULL CHECK (whatsapp REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    whatsapp_number BIGINT NOT NULL,
+    email VARCHAR(120) NOT NULL,
+    customer_service_hours VARCHAR(150) NOT NULL,
+    sales_commission_rate DECIMAL(5,2) DEFAULT 4.50,
+    rental_commission_terms VARCHAR(80) DEFAULT '1 mes de renta completa',
+    grace_period_days INT DEFAULT 5,
+    -- Parámetro fiscal de declaración de impuestos (control exclusivo de Administrador)
+    include_tax_rtn BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Parámetros de conexión al servidor de correo SMTP
+    smtp_host VARCHAR(150) DEFAULT 'smtp.terranova.hn',
+    smtp_port INT DEFAULT 587,
+    smtp_secure BOOLEAN DEFAULT FALSE,
+    smtp_user VARCHAR(120) DEFAULT 'servidor@terranova.hn',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 2.4 Tabla de Cuentas Bancarias Oficiales
+CREATE TABLE bank_accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    bank_code VARCHAR(36) NOT NULL UNIQUE,
+    bank_name VARCHAR(100) NOT NULL,
+    account_number VARCHAR(60) NOT NULL UNIQUE,
+    account_type VARCHAR(60) NOT NULL,
+    account_holder VARCHAR(150) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    is_default_receiving BOOLEAN NOT NULL DEFAULT FALSE,
+    swift_code VARCHAR(30),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.5 Tabla de Propiedades e Inventario Inmobiliario
+CREATE TABLE properties (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    property_code VARCHAR(36) NOT NULL UNIQUE, -- Código correlativo de sistema (ej: prop-1)
+    code VARCHAR(30) NOT NULL UNIQUE, -- Código comercial visible (ej: CAS-001, CASA PRINCE)
+    title VARCHAR(180) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    city VARCHAR(100) NOT NULL DEFAULT 'Tegucigalpa, M.D.C.',
+    neighborhood VARCHAR(120) NOT NULL,
+    size DECIMAL(10,2) NOT NULL, -- Metros cuadrados
+    property_type ENUM('Casa', 'Apartamento', 'Terreno', 'Local Comercial', 'Villa') NOT NULL,
+    transaction_type ENUM('Alquiler', 'Venta') NOT NULL,
+    price DECIMAL(12,2) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    status ENUM('Disponible', 'Alquilada', 'Vendida', 'En Mantenimiento') NOT NULL DEFAULT 'Disponible',
+    bedrooms INT NOT NULL DEFAULT 0,
+    bathrooms DECIMAL(3,1) NOT NULL DEFAULT 1.0,
+    parking_spots INT NOT NULL DEFAULT 0,
+    description TEXT,
+    owner_user_id INT NOT NULL,
+    assigned_agent_user_id INT NOT NULL,
+    year_built INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON UPDATE CASCADE,
+    FOREIGN KEY (assigned_agent_user_id) REFERENCES users(id) ON UPDATE CASCADE
+);
+
+-- 2.6 Tabla de Imágenes de Propiedades
+CREATE TABLE property_images (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    property_id INT NOT NULL,
+    image_url VARCHAR(500) NOT NULL,
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+);
+
+-- 2.7 Tabla de Características / Amenidades de Propiedades
+CREATE TABLE property_features (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    property_id INT NOT NULL,
+    feature_name VARCHAR(120) NOT NULL,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+);
+
+-- 2.8 Tabla de Contratos de Arrendamiento
+CREATE TABLE lease_contracts (
+-- 2.8 Tabla de Plantillas de Contrato Oficiales (Estándares .docx y .pdf)
+CREATE TABLE contract_templates (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    template_code VARCHAR(36) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    type ENUM('Arrendamiento', 'Venta', 'Venta a Plazos') NOT NULL,
+    file_name VARCHAR(180) NOT NULL,
+    file_format ENUM('docx', 'pdf') NOT NULL,
+    file_url TEXT,
+    uploaded_at VARCHAR(40) NOT NULL,
+    uploaded_by VARCHAR(150) NOT NULL,
+    description TEXT,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.9 Tabla de Contratos de Arrendamiento y Compraventa Formalizados
+CREATE TABLE lease_contracts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    contract_code VARCHAR(36) NOT NULL UNIQUE,
+    contract_number VARCHAR(40) NOT NULL UNIQUE,
+    contract_type ENUM('Arrendamiento', 'Venta', 'Venta a Plazos') NOT NULL DEFAULT 'Arrendamiento',
+    property_id INT NOT NULL,
+    tenant_user_id INT NOT NULL,
+    tenant_name VARCHAR(150) NOT NULL,
+    tenant_email VARCHAR(150) NOT NULL,
+    tenant_phone VARCHAR(25) NOT NULL CHECK (tenant_phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    tenant_national_id CHAR(13) NOT NULL CHECK (CHAR_LENGTH(tenant_national_id) = 13 AND tenant_national_id REGEXP '^[0-9]{13}$'),
+    manager_name VARCHAR(150) NOT NULL,
+    manager_email VARCHAR(150) NOT NULL,
+    manager_phone VARCHAR(25) NOT NULL CHECK (manager_phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    receiving_bank_account VARCHAR(60) NOT NULL, -- Cuenta oficial circulada en el contrato
+    receiving_bank_name VARCHAR(100) NOT NULL,
+    payment_method_used VARCHAR(60) NOT NULL DEFAULT 'Transferencia Bancaria',
+    owner_user_id INT NOT NULL,
+    owner_name VARCHAR(150) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    monthly_rent DECIMAL(12,2) NOT NULL,
+    deposit_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    status ENUM('Vigente', 'Por Vencer', 'Finalizado', 'En Mora', 'Activo', 'Cancelado') NOT NULL DEFAULT 'Vigente',
+    agent_name VARCHAR(150) NOT NULL,
+
+    -- Condiciones Económicas de Venta & Financiamiento
+    total_value DECIMAL(12,2),
+    down_payment DECIMAL(12,2), -- Prima inicial
+    financing_years INT, -- Años de plazo
+    installments_count INT, -- Total de cuotas mensuales
+    monthly_installment DECIMAL(12,2), -- Cuota mensual
+
+    -- Modalidades de Firma & Resguardo Oficial
+    signature_mode ENUM('digital', 'fisica_presencial') DEFAULT 'digital',
+    is_signed_digitally BOOLEAN DEFAULT TRUE,
+    is_signed_physically BOOLEAN DEFAULT FALSE,
+    signed_document_url LONGTEXT, -- Archivo PDF o imagen escaneada resguardada
+    signed_document_file_name VARCHAR(255),
+    signed_document_file_size VARCHAR(50),
+    signed_document_file_type VARCHAR(100),
+    document_status ENUM('Sin_Subir', 'Pendiente_Subida', 'Documento_Firmado_Cargado', 'Firmado_Digital') DEFAULT 'Firmado_Digital',
+    signed_date DATE,
+
+    -- Invalidaciones Administrativas & Cancelación
+    invalidation_requested BOOLEAN DEFAULT FALSE,
+    invalidation_reason TEXT,
+    invalidated_by_admin VARCHAR(150),
+    cancellation_reason TEXT,
+    cancelled_at TIMESTAMP NULL,
+
+    -- Firmas Digitales Gráficas (Base64)
+    signature_image_tenant LONGTEXT,
+    signature_image_owner LONGTEXT,
+    signature_image_admin LONGTEXT,
+
+    -- Plantilla Asociada
+    template_id INT,
+    template_name VARCHAR(150),
+
+    -- Comisiones y Liquidación Confidencial (Dueño vs Agencia vs Asesor)
+    total_commission_rate DECIMAL(5,2) DEFAULT 20.00,
+    agent_commission_rate DECIMAL(5,2) DEFAULT 2.00,
+    agency_commission_rate DECIMAL(5,2) DEFAULT 18.00,
+    owner_net_rate DECIMAL(5,2) DEFAULT 80.00,
+    commission_payout_mode ENUM('directa_total', 'plazos_proporcional') DEFAULT 'directa_total',
+    agent_commission_paid DECIMAL(12,2) DEFAULT 0.00,
+    owner_net_paid DECIMAL(12,2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON UPDATE CASCADE,
+    FOREIGN KEY (tenant_user_id) REFERENCES users(id) ON UPDATE CASCADE,
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON UPDATE CASCADE,
+    FOREIGN KEY (template_id) REFERENCES contract_templates(id) ON DELETE SET NULL
+);
+
+-- 2.9 Tabla de Cláusulas Contractuales
+CREATE TABLE contract_clauses (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    contract_id INT NOT NULL,
+    clause_order INT NOT NULL,
+    clause_text TEXT NOT NULL,
+    FOREIGN KEY (contract_id) REFERENCES lease_contracts(id) ON DELETE CASCADE
+);
+
+-- 2.10 Tabla de Transacciones y Recibos de Pago
+CREATE TABLE payment_transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    payment_code VARCHAR(36) NOT NULL UNIQUE,
+    receipt_number VARCHAR(40) NOT NULL UNIQUE,
+    property_id INT NOT NULL,
+    property_title VARCHAR(180) NOT NULL,
+    contract_id INT,
+    payer_name VARCHAR(150) NOT NULL,
+    payer_email VARCHAR(150) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+    date DATE NOT NULL,
+    type ENUM('Pago Renta', 'Depósito Garantía', 'Comisión Venta', 'Servicios') NOT NULL,
+    payment_method VARCHAR(60) NOT NULL,
+    status ENUM('Completado', 'En Proceso', 'Pendiente', 'Rechazado') NOT NULL DEFAULT 'En Proceso',
+    reference_code VARCHAR(80) NOT NULL UNIQUE,
+    month_covered VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON UPDATE CASCADE,
+    FOREIGN KEY (contract_id) REFERENCES lease_contracts(id) ON DELETE SET NULL
+);
+
+-- 2.11 Tabla de Mantenimiento y Reparaciones
+CREATE TABLE maintenance_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    ticket_code VARCHAR(36) NOT NULL UNIQUE,
+    ticket_number VARCHAR(40) NOT NULL UNIQUE,
+    property_id INT NOT NULL,
+    property_title VARCHAR(180) NOT NULL,
+    property_address VARCHAR(255) NOT NULL,
+    requested_by VARCHAR(150) NOT NULL,
+    requester_role ENUM('tenant', 'owner', 'agent') NOT NULL,
+    date DATE NOT NULL,
+    type ENUM('Preventivo', 'Correctivo', 'Emergencia') NOT NULL,
+    priority ENUM('Alta', 'Media', 'Baja') NOT NULL,
+    status ENUM('Pendiente', 'En Proceso', 'Reparado', 'Cancelado') NOT NULL DEFAULT 'Pendiente',
+    description TEXT NOT NULL,
+    estimated_cost DECIMAL(10,2) DEFAULT 0.00,
+    actual_cost DECIMAL(10,2) DEFAULT 0.00,
+    contractor_name VARCHAR(150),
+    resolution_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON UPDATE CASCADE
+);
+
+-- 2.12 Tabla de Calendario, Citas y Visitas
+CREATE TABLE calendar_events (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_code VARCHAR(36) NOT NULL UNIQUE,
+    title VARCHAR(180) NOT NULL,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    type ENUM('Visita Inmueble', 'Reunión Propietario', 'Firma Contrato', 'Mantenimiento') NOT NULL,
+    priority ENUM('Alta', 'Media', 'Baja') NOT NULL,
+    assigned_to VARCHAR(150) NOT NULL,
+    property_title VARCHAR(180),
+    client_name VARCHAR(150),
+    client_email VARCHAR(150),
+    client_phone VARCHAR(25) CHECK (client_phone IS NULL OR client_phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.13 Tabla de Prospectos Comerciales (CRM Leads)
+CREATE TABLE client_leads (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    lead_code VARCHAR(36) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    phone VARCHAR(25) NOT NULL CHECK (phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    phone_number BIGINT NOT NULL,
+    national_id CHAR(13) CHECK (national_id IS NULL OR (CHAR_LENGTH(national_id) = 13 AND national_id REGEXP '^[0-9]{13}$')),
+    interest_type ENUM('Alquiler', 'Venta') NOT NULL,
+    property_interest VARCHAR(180) NOT NULL,
+    budget DECIMAL(12,2) NOT NULL,
+    status ENUM('Nuevo', 'Contactado', 'En Negociación', 'Cerrado', 'Descartado') NOT NULL DEFAULT 'Nuevo',
+    assigned_agent_id INT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (assigned_agent_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- 2.14 Tabla de Hilos de Mensajes
+CREATE TABLE message_threads (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    thread_code VARCHAR(36) NOT NULL UNIQUE,
+    contact_name VARCHAR(150) NOT NULL,
+    contact_email VARCHAR(150) NOT NULL,
+    contact_phone VARCHAR(25) CHECK (contact_phone IS NULL OR contact_phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    property_title VARCHAR(180),
+    unread BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.15 Tabla de Mensajes Individuales
+CREATE TABLE messages (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    message_code VARCHAR(36) NOT NULL UNIQUE,
+    thread_id INT NOT NULL,
+    sender ENUM('user', 'support', 'client') NOT NULL,
+    sender_name VARCHAR(150) NOT NULL,
+    text TEXT NOT NULL,
+    timestamp VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (thread_id) REFERENCES message_threads(id) ON DELETE CASCADE
+);
+
+-- 2.16 Tabla de Historial Inmutable y Auditoría Forense (RF-0801)
+CREATE TABLE system_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    log_code VARCHAR(36) NOT NULL UNIQUE,
+    timestamp VARCHAR(60) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    module VARCHAR(80) NOT NULL,
+    user_name VARCHAR(150) NOT NULL,
+    role VARCHAR(30) NOT NULL,
+    details TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.17 Tabla de Notificaciones en Tiempo Real (RF-Solicitudes)
+CREATE TABLE notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    notification_code VARCHAR(36) NOT NULL UNIQUE,
+    title VARCHAR(180) NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('visit_request', 'maintenance_request', 'new_lead', 'contract_signed', 'payment_received', 'system_alert') NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    timestamp VARCHAR(60) NOT NULL,
+    related_entity_id VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.18 Tabla de Colaboradores y Empleados (Gestión de Nómina & Asesores)
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_code VARCHAR(30) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    national_id CHAR(13) NOT NULL CHECK (CHAR_LENGTH(national_id) = 13 AND national_id REGEXP '^[0-9]{13}$'),
+    email VARCHAR(150) NOT NULL,
+    phone VARCHAR(25) NOT NULL CHECK (phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$'),
+    department VARCHAR(60) NOT NULL,
+    position VARCHAR(80) NOT NULL,
+    base_salary DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    commission_rate DECIMAL(5,2) NOT NULL DEFAULT 2.00,
+    bank_name VARCHAR(80) NOT NULL,
+    bank_account_number VARCHAR(60) NOT NULL,
+    hire_date DATE NOT NULL,
+    status ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2.19 Tabla de Liquidaciones de Nómina y Comisiones Contractuales
+CREATE TABLE payroll_records (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    payroll_number VARCHAR(40) NOT NULL UNIQUE,
+    employee_id INT NOT NULL,
+    employee_name VARCHAR(150) NOT NULL,
+    period VARCHAR(60) NOT NULL,
+    base_salary DECIMAL(10,2) NOT NULL,
+    commission_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    bonuses DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    deductions DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    net_salary DECIMAL(10,2) NOT NULL,
+    status ENUM('Pendiente', 'Pagado', 'Procesando') NOT NULL DEFAULT 'Pendiente',
+    payment_date DATE,
+    bank_account_used VARCHAR(60),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON UPDATE CASCADE
+);
+
+-- 2.20 Tabla de Permisos por Rol (Matriz RBAC)
+CREATE TABLE role_permissions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    role_key VARCHAR(30) NOT NULL,
+    module VARCHAR(80) NOT NULL,
+    can_view BOOLEAN DEFAULT FALSE,
+    can_create BOOLEAN DEFAULT FALSE,
+    can_edit BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (role_key) REFERENCES roles(role_key) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- 3. POBLACIÓN DE DATOS INICIALES (DML) CON FORMATOS OFICIALES DE HONDURAS
+-- ============================================================================
+
+-- 3.1 Roles del Sistema
+INSERT INTO roles (role_key, name, description) VALUES
+('admin', 'Administrador General', 'Control total operativo, usuarios, RBAC, auditoría y contratos.'),
+('agent', 'Agente Inmobiliario', 'Gestión de prospección CRM, calendario de citas y atención.'),
+('owner', 'Propietario', 'Consulta de inmuebles en renta, liquidaciones y rentabilidad.'),
+('tenant', 'Inquilino Activo', 'Portal de arrendamiento, agenda privada, mensajes y pago de rentas.'),
+('client', 'Cliente / Comprador', 'Acceso al catálogo inmobiliario, favoritos y solicitudes de visitas.'),
+('contractor', 'Contratista Técnico', 'Recepción de órdenes de trabajo y mantenimiento residencial.'),
+('guest', 'Visitante Público', 'Navegación general en catálogo inmobiliario.');
+
+-- 3.2 Configuración Oficial de la Empresa
+INSERT INTO company_settings (
+    company_name, slogan, rtn, address, phone, phone_number, whatsapp, whatsapp_number, email, customer_service_hours
+) VALUES (
+    'TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.',
+    'TU SUEÑO, AL ALCANCE',
+    '08019995123456',
+    'Torre Corporativa Morazán, Nivel 7, Bulevar Morazán, Tegucigalpa, M.D.C., Honduras',
+    '+504-2238-9000',
+    50422389000,
+    '+504-9876-5432',
+    50498765432,
+    'atencionalcliente@terranova.hn',
+    'Lunes a Viernes: 8:00 AM - 5:30 PM | Sábados: 8:00 AM - 1:00 PM'
+);
+
+-- 3.3 Cuentas Bancarias Oficiales (Con indicación de cuenta que circulará en contratos)
+INSERT INTO bank_accounts (bank_code, bank_name, account_number, account_type, account_holder, currency, is_default_receiving, swift_code) VALUES
+('bnk-ficohsa', 'Banco Ficohsa Honduras', '2000-1122-3344-99', 'Monetaria Cheques USD', 'TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.', 'USD', TRUE, 'FICOHNTE'),
+('bnk-bac', 'BAC Credomatic Honduras', '7421-9988-1234-55', 'Cuenta Corriente USD', 'TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.', 'USD', FALSE, 'BMSAHNTE'),
+('bnk-atlantida', 'Banco Atlántida S.A.', '1100-3344-5566-77', 'Cheques Empresarial HNL', 'TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.', 'HNL', FALSE, 'ATLAHNTE');
+
+-- 3.4 Usuarios del Sistema con DNI de 13 dígitos y Teléfono con separadores + y -
+-- Contraseñas en texto plano para validación de pruebas:
+-- Kenneth: Admin123!
+-- Anthony: Agente123!
+-- Keidy: Propietario123!
+-- Emis: Inquilino123!
+-- Carlos: Contratista123!
+-- Sofia: Cliente123!
+
+INSERT INTO users (
+    id, user_code, name, email, national_id, national_id_num, phone, phone_number, role_key, account_number, status, is_subscribed, avatar_url, password_hash, sha256_hash
+) VALUES
+(
+    1,
+    'usr-1', 
+    'Kenneth Adonay Zúniga', 
+    'kenneth.zuniga@unah.hn', 
+    '0801199512345', 
+    801199512345, 
+    '+504-9876-5432', 
+    50498765432, 
+    'admin', 
+    'CTA-ADM-001', 
+    'active', 
+    TRUE, 
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    '$2a$12$e8F4W9c41cR1YfD6fEwWee7zF4yVv3lKm89bXzNqP5jLkM2oPpZ2q', -- Bcrypt Hash de Admin123!
+    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'  -- SHA-256 Hash de Admin123!
+),
+(
+    2,
+    'usr-2', 
+    'Anthony Rafael Alfaro', 
+    'anthony.alfaro@unah.hn', 
+    '0801199201234', 
+    801199201234, 
+    '+504-9912-3456', 
+    50499123456, 
+    'agent', 
+    'CTA-AGT-104', 
+    'active', 
+    TRUE, 
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    '$2a$12$Z1x8v9p2LqM4n5k6j7h8g9f0e1d2c3b4a5z6y7x8w9v0u1t2s3r4q', -- Bcrypt Hash de Agente123!
+    '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5'  -- SHA-256 Hash de Agente123!
+),
+(
+    3,
+    'usr-3', 
+    'Keidy Melina Reyes', 
+    'keidy.reyes@unah.hn', 
+    '0501199023456', 
+    501199023456, 
+    '+504-9456-7890', 
+    50494567890, 
+    'owner', 
+    'CTA-PROP-202', 
+    'active', 
+    TRUE, 
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    '$2a$12$W9v8u7t6s5r4q3p2o1n0m9l8k7j6i5h4g3f2e1d0c9b8a7z6y5x4w', -- Bcrypt Hash de Propietario123!
+    '6cf615d5bcaac778352a8f1f3360d23f02f34ec182e25989736a3238e739d413'  -- SHA-256 Hash de Propietario123!
+),
+(
+    4,
+    'usr-4', 
+    'Emis Alejandra Torres', 
+    'andinoemis@gmail.com', 
+    '0801199604812', 
+    801199604812, 
+    '+504-9623-4567', 
+    50496234567, 
+    'tenant', 
+    'CTA-INQ-305', 
+    'active', 
+    TRUE, 
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    '$2a$12$A3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a', -- Bcrypt Hash de Inquilino123!
+    'b822f12550670be01c2240d5ec41bee6d2f32e5241da8edd3fbe817434ac0623'  -- SHA-256 Hash de Inquilino123!
+),
+(
+    5,
+    'usr-5', 
+    'Carlos Murillo (Servicios Pro)', 
+    'mantenimiento.murillo@gmail.com', 
+    '0801198898765', 
+    801198898765, 
+    '+504-9511-2233', 
+    50495112233, 
+    'contractor', 
+    'CTA-CON-401', 
+    'active', 
+    FALSE, 
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    '$2a$12$L9k8j7h6g5f4e3d2c1b0a9z8y7x6w5v4u3t2s1r0q9p8o7n6m5l4k', -- Bcrypt Hash de Contratista123!
+    '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'  -- SHA-256 Hash de Contratista123!
+),
+(
+    6,
+    'usr-6', 
+    'Sofía Mariana Castro', 
+    'sofia.castro@gmail.com', 
+    '0801199854321', 
+    801199854321, 
+    '+504-9788-1122', 
+    50497881122, 
+    'client', 
+    'CTA-CLI-501', 
+    'active', 
+    TRUE, 
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    '$2a$12$M1n2b3v4c5x6z7a8s9d0f1g2h3j4k5l6p7o8i9u0y1t2r3e4w5q6z', -- Bcrypt Hash de Cliente123!
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'  -- SHA-256 Hash de Cliente123!
+);
+
+-- 3.5 Propiedades Iniciales en Catálogo
+INSERT INTO properties (
+    id, property_code, code, title, address, city, neighborhood, size, property_type, transaction_type, price, currency, status, bedrooms, bathrooms, parking_spots, description, owner_user_id, assigned_agent_user_id, year_built
+) VALUES
+(
+    1,
+    'prop-1',
+    'CASA PRINCE',
+    'Casa Prince - Modelo Clásico de Dos Niveles',
+    'Residencial Las Uvas, Bloque C, Lote 14',
+    'Tegucigalpa, M.D.C.',
+    'Las Uvas',
+    215.00,
+    'Casa',
+    'Alquiler',
+    1250.00,
+    'USD',
+    'Alquilada',
+    3,
+    2.5,
+    2,
+    'Hermosa residencia unifamiliar de dos niveles con finos acabados en caoba, amplia sala con iluminación natural, cocina integral equipada con desayunador de granito, terraza techada y jardín privado en circuito cerrado con vigilancia 24/7.',
+    3, -- Keidy Melina Reyes (Propietaria)
+    2, -- Anthony Rafael Alfaro (Agente)
+    2022
+),
+(
+    2,
+    'prop-2',
+    'APT-LOMAS-01',
+    'Condominio Panorama - Penthouse Nivel 9',
+    'Lomas del Guijarro Sur, Torre Titanium',
+    'Tegucigalpa, M.D.C.',
+    'Lomas del Guijarro',
+    185.00,
+    'Apartamento',
+    'Venta',
+    285000.00,
+    'USD',
+    'Disponible',
+    3,
+    3.0,
+    2,
+    'Penthouse exclusivo con vista panorámica a la ciudad, balcón privado, acabados de cuarzo y acceso a piscina infinity, gimnasio y business center.',
+    3,
+    2,
+    2023
+),
+(
+    3,
+    'prop-3',
+    'TER-VALLE-04',
+    'Lote Residencial El Molinón',
+    'Valle de Ángeles, Km 12 Carretera Principal',
+    'Valle de Ángeles',
+    'El Molinón',
+    850.00,
+    'Terreno',
+    'Venta',
+    75000.00,
+    'USD',
+    'Disponible',
+    0,
+    0.0,
+    0,
+    'Terreno plano con vegetación de pinos, clima de montaña, servicios básicos de agua y electricidad disponibles.',
+    3,
+    2,
+    2024
+);
+
+-- Características de Propiedades
+INSERT INTO property_features (property_id, feature_name) VALUES
+(1, 'Circuito Cerrado con Garita'),
+(1, 'Cisterna de 2,500 Galones'),
+(1, 'Calentador de Agua Central'),
+(1, 'Área de Barbacoa Techada'),
+(1, 'Portón Eléctrico'),
+(2, 'Piscina Infinity'),
+(2, 'Gimnasio Equipado'),
+(2, 'Planta Eléctrica Total');
+
+-- 3.6 Contrato Oficial de Arrendamiento
+INSERT INTO lease_contracts (
+    id, contract_code, contract_number, property_id, tenant_user_id, tenant_name, tenant_email, tenant_phone, tenant_national_id, manager_name, manager_email, manager_phone, receiving_bank_account, receiving_bank_name, payment_method_used, owner_user_id, owner_name, start_date, end_date, monthly_rent, deposit_amount, currency, status, agent_name, is_signed_digitally, signed_date
+) VALUES (
+    1,
+    'ctr-001',
+    'CTR-2024-089',
+    1, -- Casa Prince
+    4, -- Emis Alejandra Torres
+    'Emis Alejandra Torres',
+    'andinoemis@gmail.com',
+    '+504-9623-4567',
+    '0801199604812',
+    'Lic. Kenneth Adonay Zúniga',
+    'kenneth.zuniga@unah.hn',
+    '+504-9876-5432',
+    '2000-1122-3344-99', -- Cuenta circulada en contrato
+    'Banco Ficohsa Honduras',
+    'Transferencia Bancaria Directa',
+    3,
+    'Keidy Melina Reyes',
+    '2024-11-01',
+    '2025-11-01',
+    1250.00,
+    1250.00,
+    'USD',
+    'Vigente',
+    'Anthony Rafael Alfaro',
+    TRUE,
+    '2024-10-28'
+);
+
+-- Cláusulas Contractuales
+INSERT INTO contract_clauses (contract_id, clause_order, clause_text) VALUES
+(1, 1, 'PRIMERA: OBJETO DEL CONTRATO. El Arrendador da en arrendamiento el bien inmueble identificado como Casa Prince en Residencial Las Uvas.'),
+(1, 2, 'SEGUNDA: CANON MENSUAL. El precio mensual de la renta es de $1,250.00 USD (o su equivalente en Lempiras HNL al tipo de cambio oficial del Banco Central de Honduras según Decreto 131-98) pagaderos los primeros 5 días calendario de cada periodo en la cuenta bancaria oficial circulada.'),
+(1, 3, 'TERCERA: DEPÓSITO EN GARANTÍA. El inquilino entrega $1,250.00 USD para responder por eventuales daños.'),
+(1, 4, 'CUARTA: DESTINO HABITACIONAL. El inmueble se destinará exclusivamente a vivienda unifamiliar privada.');
+
+-- 3.7 Transacciones y Pagos Conciliados
+INSERT INTO payment_transactions (
+    payment_code, receipt_number, property_id, property_title, contract_id, payer_name, payer_email, amount, currency, date, type, payment_method, status, reference_code, month_covered
+) VALUES
+('pay-001', 'REC-2024-001', 1, 'Casa Prince - Modelo Clásico', 1, 'Emis Alejandra Torres', 'andinoemis@gmail.com', 1250.00, 'USD', '2024-11-02', 'Pago Renta', 'Transferencia Bancaria', 'Completado', 'TXN-77821-TRA', 'Noviembre 2024'),
+('pay-002', 'REC-2024-002', 1, 'Casa Prince - Modelo Clásico', 1, 'Emis Alejandra Torres', 'andinoemis@gmail.com', 1250.00, 'USD', '2024-10-28', 'Depósito Garantía', 'Transferencia Bancaria', 'Completado', 'TXN-77409-TRA', 'Garantía Inicial');
+
+-- 3.8 Solicitudes de Mantenimiento
+INSERT INTO maintenance_requests (
+    ticket_code, ticket_number, property_id, property_title, property_address, requested_by, requester_role, date, type, priority, status, description, estimated_cost, actual_cost, contractor_name, resolution_notes
+) VALUES (
+    'mnt-001',
+    'MNT-2024-001',
+    1,
+    'Casa Prince',
+    'Residencial Las Uvas, Bloque C, Lote 14',
+    'Emis Alejandra Torres',
+    'tenant',
+    '2024-11-03',
+    'Correctivo',
+    'Media',
+    'Reparado',
+    'Ajuste en empaque de grifería del baño de visitas y revisión de presión en ducha principal.',
+    75.00,
+    75.00,
+    'Carlos Murillo (Servicios Pro)',
+    'Se reemplazaron los dos empaques desgastados y se purgó la línea de agua caliente. Operativo al 100%.'
+);
+
+-- 3.9 Citas y Calendario
+INSERT INTO calendar_events (event_code, title, date, time, type, priority, assigned_to, property_title, client_name, client_email, client_phone, notes) VALUES
+('evt-001', 'Revisión Técnica Preventiva', '2024-11-15', '10:00:00', 'Mantenimiento', 'Media', 'Anthony Rafael Alfaro', 'Casa Prince', 'Emis Alejandra Torres', 'andinoemis@gmail.com', '+504-9623-4567', 'Coordinar con técnico Carlos Murillo la revisión semestral de cisterna.'),
+('evt-002', 'Visita Guiada Condominio Panorama', '2024-11-16', '14:30:00', 'Visita Inmueble', 'Alta', 'Anthony Rafael Alfaro', 'Condominio Panorama', 'Ing. Roberto Maldonado', 'roberto.maldonado@gmail.com', '+504-9912-3456', 'Interesado en compra directa con financiamiento bancario preaprobado.');
+
+-- 3.10 Prospectos Comerciales (CRM Leads)
+INSERT INTO client_leads (lead_code, name, email, phone, phone_number, national_id, interest_type, property_interest, budget, status, assigned_agent_id, notes) VALUES
+('lead-001', 'Dr. Roberto Mendoza', 'roberto.mendoza@hospital.hn', '+504-9988-7766', 50499887766, '0801198501234', 'Venta', 'Condominio Panorama - Penthouse Nivel 9', 285000.00, 'En Negociación', 2, 'Cliente médico cirujano, requiere parqueo para dos camionetas y bodega.'),
+('lead-002', 'Lic. Carmen Valladares', 'carmen.valladares@consultores.hn', '+504-9455-6677', 50494556677, '0801199104567', 'Alquiler', 'Casa Prince - Modelo Clásico', 1250.00, 'Nuevo', 2, 'Familia de 4 miembros, busca contrato a 24 meses renovable.');
+
+-- 3.11 Hilos de Mensajes y Asesoría
+INSERT INTO message_threads (thread_code, contact_name, contact_email, contact_phone, property_title, unread) VALUES
+('thread-001', 'Emis Alejandra Torres', 'andinoemis@gmail.com', '+504-9623-4567', 'Casa Prince', FALSE);
+
+INSERT INTO messages (message_code, thread_id, sender, sender_name, text, timestamp) VALUES
+('msg-1', 1, 'user', 'Emis Alejandra Torres', 'Hola Anthony, buenas tardes. Quería confirmar si ya registraron el comprobante de pago de la renta de noviembre.', '03/11/2024, 02:15 PM'),
+('msg-2', 1, 'support', 'Anthony Rafael Alfaro', '¡Buenas tardes, estimada Emis! Sí, el pago fue conciliado con éxito en la cuenta de Banco Ficohsa y tu recibo oficial REC-2024-001 ya está disponible en tu portal.', '03/11/2024, 02:22 PM');
+
+-- 3.12 Notificaciones en Tiempo Real Iniciales (RF-Solicitudes)
+INSERT INTO notifications (notification_code, title, message, type, is_read, timestamp, related_entity_id) VALUES
+('notif-1', 'Nueva Solicitud de Cita de Visita', 'El cliente Carlos Flores solicitó visitar "Casa Prince" (CAS-001) para el 28 de Octubre a las 10:00 AM.', 'visit_request', FALSE, '2024-10-27 14:30:00', 'vis-001'),
+('notif-2', 'Nueva Solicitud de Mantenimiento', 'Inquilina Emis Torres reportó incidencia: Ajuste en empaque de grifería en Casa Prince (Ticket MNT-2024-001).', 'maintenance_request', FALSE, '2024-11-03 08:45:00', 'mnt-001'),
+('notif-3', 'Nuevo Prospecto Registrado en CRM', 'Dr. Roberto Mendoza mostró interés en Condominio Panorama con presupuesto de $285,000 USD.', 'new_lead', TRUE, '2024-11-04 11:20:00', 'lead-001');
+
+-- 3.13 Auditoría Forense y Logs
+INSERT INTO system_logs (log_code, timestamp, action, module, user_name, role, details) VALUES
+('log-001', '2024-10-28 09:30:15', 'Generación de Contrato', 'Contratos', 'Kenneth Adonay Zúniga', 'admin', 'Emisión del contrato de arrendamiento CTR-2024-089 para Emis Alejandra Torres en Casa Prince. Cuenta receptora designada: 2000-1122-3344-99 Banco Ficohsa.'),
+('log-002', '2024-11-02 11:45:00', 'Conciliación de Pago', 'Pagos', 'Kenneth Adonay Zúniga', 'admin', 'Validación del pago de $1,250.00 USD por concepto de Pago Renta Noviembre 2024. Recibo REC-2024-001 emitido.');
+
+-- ============================================================================
+-- FIN DEL SCRIPT DE BASE DE DATOS
+-- ============================================================================

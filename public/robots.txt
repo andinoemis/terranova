@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/private/
+
+# Sitemap location
+Sitemap: https://ais-dev-w4sywdwntousefqhrqbm6u-112249538281.us-west1.run.app/sitemap.xml

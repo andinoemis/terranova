@@ -1,0 +1,703 @@
+================================================================================
+           TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L. - SISTEMA WEB INTEGRAL
+                 DOCUMENTO TÉCNICO DE ARQUITECTURA, PARÁMETROS Y VARIABLES
+================================================================================
+Fecha de Emisión: Noviembre 2024 (Actualizado Febrero 2025)
+Versión: 2.8.0 (Edición Producción, Auditoría & Onboarding Completo)
+Empresa: Terranova Gestión Inmobiliaria S. de R.L.
+RTN: 
+Sede Principal: 
+
+
+--------------------------------------------------------------------------------
+1. RESUMEN EJECUTIVO Y FUNCIONALIDAD DEL SISTEMA
+--------------------------------------------------------------------------------
+El Sistema Web Terranova es una solución tecnológica integral diseñada para 
+digitalizar y automatizar los procesos operativos, comerciales, jurídicos y 
+financieros de una empresa de corretaje y administración de bienes raíces.
+
+Módulos Principales:
+1.1 Catálogo Inmobiliario Abierto:
+    - Exploración pública de propiedades residenciales, comerciales y terrenos.
+    - Filtros avanzados por tipo de inmueble, tipo de transacción (Alquiler / Venta), 
+      rango de precios en USD y búsqueda por palabras clave o código único.
+    - Fichas técnicas detalladas con especificaciones, medidas, amenidades y 
+      formulario de solicitud de citas presenciales o virtuales.
+
+1.2 Panel de Invitados y Acceso Público:
+    - Diseñado exclusivamente para permitir la visualización del catálogo y el 
+      acceso al sistema mediante inicio de sesión o registro de nueva cuenta.
+    - Registro público restringido a dos perfiles autorizados: Cliente (buscador 
+      o comprador) e Inquilino (arrendatario de inmuebles).
+
+1.3 Portal Personal de Inquilino:
+    - Área privada personalizada según la identidad del usuario autenticado.
+    - Agenda personal de citas y solicitudes de revisión técnica.
+    - Canal de mensajería directa con el asesor inmobiliario asignado.
+    - Consulta de contrato de arrendamiento activo, canon de renta mensual y fechas.
+    - Pasarela de pago en línea de canon de arrendamiento (tarjetas de crédito, 
+      débito y transferencia bancaria directa).
+    - Reporte y seguimiento de incidencias o reparaciones de mantenimiento.
+
+1.4 Panel de Administrador con Control Total (RBAC):
+    - Supervisión de indicadores clave de desempeño (KPIs): ingresos recaudados, 
+      gastos operativos por mantenimiento, utilidad neta y tasa de ocupación.
+    - Control de inventario inmobiliario con generación automática de identificadores.
+    - Gestión de usuarios: reasignación de roles por parte del administrador sin 
+      posibilidad de alterar datos privados ya ingresados por los usuarios, y 
+      facultad para activar o dar de baja (desactivar) cuentas.
+    - Generador y emisor automatizado de contratos de arrendamiento con comparecencia 
+      de inquilino (ID, teléfono, correo) y encargado administrativo.
+    - Matriz granular de permisos por rol (Role-Based Access Control).
+    - Historial inmutable de auditoría de operaciones (RF-0801).
+
+1.5 Módulo de Formatos de Impresión & Fichas Técnicas (Exclusivo Administrador):
+    - Generación y vista previa de contratos de arrendamiento con validez legal.
+    - Circulación y destaque formal de la cuenta bancaria oficial receptora de pagos.
+    - Editor en vivo para modificar los datos de atención al cliente (teléfonos, 
+      WhatsApp, horario, correos, dirección) sin necesidad de conocimientos técnicos 
+      ni edición manual de código fuente.
+    - Gestor de cuentas bancarias de la empresa (agregar bancos, editar cuentas y 
+      designar la cuenta receptora por defecto que circulará en los contratos).
+    - Fichas técnicas oficiales y comprobantes fiscales con folio único.
+
+--------------------------------------------------------------------------------
+2. PARÁMETROS OPERATIVOS DEL SISTEMA
+--------------------------------------------------------------------------------
+El sistema opera bajo los siguientes parámetros de negocio y configuración:
+
+- Moneda Base: Dólar Estadounidense (USD) y Lempiras (HNL).
+- Tasa Estándar de Comisión por Venta: 4.5% deducible sobre el valor final de venta.
+- Comisión por Colocación de Arrendamiento: Equivalente a 1 mes de renta completa.
+- Días de Gracia para Pago de Renta: 5 días calendario antes de aplicar recargo por mora.
+- Algoritmo de Generación de Códigos de Inmuebles:
+    * Prefijo según tipo:
+      - Casa -> CAS-[Correlativo 3 dígitos] (ej: CAS-001, CAS-002)
+      - Apartamento -> APT-[Correlativo 3 dígitos] (ej: APT-001)
+      - Terreno -> TER-[Correlativo 3 dígitos] (ej: TER-001)
+      - Local Comercial -> LOC-[Correlativo 3 dígitos] (ej: LOC-001)
+      - Villa -> VIL-[Correlativo 3 dígitos] (ej: VIL-001)
+- Numeración de Contratos: CTR-[Año]-[Correlativo aleatorio único de 3 dígitos] (ej: CTR-2024-089).
+- Numeración de Recibos de Pago: REC-[Año]-[Correlativo de 4 dígitos] (ej: REC-2024-4819).
+- Códigos de Transacción Bancaria: TXN-[5 dígitos aleatorios]-[Método Pago] (ej: TXN-49102-TAR).
+- Números de Cuenta de Usuario: CTA-[Rol 3 letras]-[Correlativo] (ej: CTA-ADM-001, CTA-INQ-305).
+- Datos Oficiales de Atención al Cliente Predeterminados:
+    * PBX: +504 2238-9000
+    * WhatsApp: +504 9876-5432
+    * Email: atencionalcliente@terranova.hn
+    * Horario de Atención: Lunes a Viernes de 8:00 AM a 5:30 PM | Sábados de 8:00 AM a 1:00 PM
+    * Dirección: Torre Corporativa Morazán, Nivel 7, Bulevar Morazán, Tegucigalpa, M.D.C.
+
+--------------------------------------------------------------------------------
+3. RESTRICCIONES DE ACCESO, SEGURIDAD Y PRIVACIDAD
+--------------------------------------------------------------------------------
+El sistema implementa políticas estrictas de seguridad de la información:
+
+3.1 Restricción de Registro Público:
+    - En el formulario de registro de nuevas cuentas, únicamente están disponibles 
+      los roles 'client' (Cliente) y 'tenant' (Inquilino).
+    - Los roles privilegiados ('admin', 'agent', 'owner', 'contractor') NO pueden 
+      ser creados mediante autoregistro público.
+
+3.2 Control Exclusivo de Roles por el Administrador:
+    - Solo el usuario con rol 'admin' puede cambiar el tipo de cuenta de un usuario.
+    - RESTRICCIÓN DE INTEGRIDAD: El administrador solo puede modificar el selector 
+      de rol ('client', 'tenant', 'owner', 'agent', 'admin', 'contractor') y el 
+      estado de cuenta ('active' o 'inactive'). El administrador NO tiene acceso ni 
+      permiso para editar los datos personales que el usuario ingresó originalmente 
+      (nombre, correo electrónico, teléfono o contraseña).
+
+3.3 Desactivación y Bloqueo de Cuentas:
+    - El administrador cuenta con la función de dar de baja o suspender una cuenta. 
+      Al desactivarse, la cuenta pasa al estado 'inactive', impidiendo operaciones.
+    - El administrador no puede desactivar su propia sesión activa para evitar 
+      bloqueos accidentales del sistema.
+
+3.4 Segregación de Información en el Portal de Inquilino:
+    - Cada inquilino visualiza exclusivamente la información vinculada a su cuenta.
+    - Las citas, hilos de mensajes, contratos y reportes se filtran de forma estricta 
+      por el identificador o correo electrónico del inquilino autenticado.
+    - Si un inquilino recién registrado aún no cuenta con contrato formal emitido, 
+      el sistema le muestra un mensaje informativo de bienvenida y le permite agendar 
+      citas o consultar a su asesor, sin exponer datos de otros clientes.
+
+3.5 Cifrado de Contraseñas y Seguridad:
+    - Cifrado de credenciales en reposo utilizando algoritmo de dispersión criptográfica 
+      SHA-256 y compatibilidad con estándar bcrypt ($2a$12$).
+    - Validación de fuerza mínima de contraseña (mínimo 6 caracteres).
+
+3.6 Restricción del Pie de Página Público:
+    - El pie de página público visible para todos los usuarios contiene ÚNICAMENTE:
+      1) Datos oficiales de la empresa (Nombre, Eslogan, RTN, Dirección).
+      2) Canales de atención al cliente (Teléfono PBX, WhatsApp, Correo, Horarios).
+      3) Enlaces a Políticas de Privacidad y Términos y Condiciones Legales.
+    - Se excluyen del pie de página público badges técnicos innecesarios como 
+      certificaciones SSL forzadas, claves de APIs o datos internos de desarrollo, 
+      los cuales quedan archivados en esta carpeta de documentación técnica.
+
+3.7 Restricción de Notificaciones y Mensajes a Usuarios con Cuenta:
+    - Las alertas, notificaciones (campana de novedades en barra de navegación) y 
+      los canales de mensajería están estrictamente restringidos para aquellos 
+      usuarios que poseen una cuenta autenticada ('role !== guest').
+    - Los visitantes públicos o no autenticados no tienen acceso ni visualización 
+      de la campana de notificaciones ni de las bandejas de mensajes privados.
+
+3.8 Control Fiscal de RTN en Facturación y Recibos (Exclusivo Administrador):
+    - El Registro Tributario Nacional (RTN: 08011995123456) se utiliza estrictamente 
+      para efectos de declaración tributaria en facturas oficiales y recibos de pago.
+    - Este parámetro impositivo cuenta con un interruptor que solo puede ser habilitado 
+      o deshabilitado por el Administrador General desde el panel de configuración ('includeTaxRtn').
+    - Si el Administrador deshabilita este parámetro, los comprobantes y facturas se emiten 
+      bajo régimen exento sin retención fiscal y sin imprimir el RTN empresarial.
+
+3.9 Validación en Tiempo Real y Máscaras de Entrada (Input Masks) en Pagos:
+    - Restricción estricta de caracteres no numéricos (bloqueo de letras/varchar) en los campos:
+      * Número de Tarjeta: Máscara '#### #### #### ####' (16 dígitos numéricos exactos).
+      * Fecha de Vencimiento: Máscara 'MM/AA' (5 caracteres numéricos, validando mes de 01 a 12 y año vigente).
+      * Código de Seguridad (CVV): Máscara '###' o '####' (3 a 4 dígitos numéricos).
+      * Titular de Cuenta: Mínimo 3 caracteres alfabéticos.
+    - Prevención de envío: El botón de pago permanece deshabilitado si cualquiera de 
+      los campos posee una longitud incorrecta o datos inválidos.
+
+3.10 Modal de Estado de Carga 'Pago en Proceso' y Verificación Externa:
+    - Al enviar un pago, se activa el modal con el mensaje:
+      "Pago en proceso: Verificando transacción".
+    - El comprobante provisional emitido adquiere el estado formal 'En Proceso' debido a que el 
+      sistema no cuenta con compensación bancaria automática directa.
+    - El diseño del comprobante y modal explican con claridad que el comprobante final 
+      definitivo será enviado una vez validada y conciliada externamente la acreditación bancaria 
+      por tesorería.
+
+--------------------------------------------------------------------------------
+4. DICCIONARIO DE DATOS: VARIABLES, ESTRUCTURAS Y TIPOS UTILIZADOS
+--------------------------------------------------------------------------------
+
+4.1 UserRole (Tipo Enumerado)
+    - Definición: 'admin' | 'agent' | 'owner' | 'tenant' | 'client' | 'contractor' | 'guest'
+    - Descripción: Perfiles de autorización que determinan el nivel de acceso en la matriz RBAC.
+
+4.2 User (Entidad de Usuario)
+    - id: string (Identificador alfanumérico único, ej: 'usr-1')
+    - name: string (Nombre completo del usuario registrado)
+    - email: string (Correo electrónico único y normalizado en minúsculas)
+    - phone: string (Número telefónico de contacto en formato E.164 o local)
+    - role: UserRole (Rol asignado al usuario)
+    - status: 'active' | 'inactive' (Estado operativo de la cuenta)
+    - isSubscribed: boolean (Indicador de suscripción activa para servicios preferenciales)
+    - avatar: string [opcional] (URL de fotografía de perfil)
+    - accountNumber: string [opcional] (Identificador de cuenta contable, ej: 'CTA-INQ-305')
+    - password: string [opcional] (Contraseña cifrada con algoritmo criptográfico)
+
+4.3 BankAccount (Entidad de Cuenta Bancaria)
+    - id: string (Identificador de la cuenta bancaria)
+    - bankName: string (Nombre de la entidad bancaria, ej: 'BAC Credomatic')
+    - accountNumber: string (Número de cuenta para transferencias)
+    - accountType: string (Tipo de producto bancario, ej: 'Monetaria USD')
+    - accountHolder: string (Nombre del beneficiario / titular de la cuenta)
+    - currency: 'USD' | 'HNL' (Divisa de la cuenta bancaria)
+    - isDefaultReceiving: boolean (Marca que designa la cuenta que circulará en los contratos)
+    - swiftCode: string [opcional] (Código SWIFT para giros internacionales)
+
+4.4 CompanySettings (Parámetros Globales de la Empresa)
+    - companyName: string (Razón social oficial de la empresa)
+    - slogan: string (Lema institucional de la marca)
+    - rtn: string (Registro Tributario Nacional)
+    - address: string (Dirección física corporativa de la sede)
+    - phone: string (Teléfono PBX de atención al cliente)
+    - whatsapp: string (Línea de WhatsApp de atención y soporte)
+    - email: string (Correo oficial de recepción y atención)
+    - customerServiceHours: string (Horario de funcionamiento y recepción)
+    - bankAccounts: BankAccount[] (Listado de cuentas bancarias autorizadas)
+
+4.5 Property (Entidad de Inmueble)
+    - id: string (Identificador único de propiedad, ej: 'prop-1')
+    - code: string (Código identificador generado automáticamente, ej: 'CAS-001')
+    - title: string (Nombre comercial del inmueble)
+    - address: string (Dirección geográfica)
+    - city: string (Ciudad o municipio)
+    - neighborhood: string (Colonia o sector residencial)
+    - size: number (Superficie total en metros cuadrados m²)
+    - propertyType: 'Casa' | 'Apartamento' | 'Terreno' | 'Local Comercial' | 'Villa'
+    - transactionType: 'Alquiler' | 'Venta'
+    - price: number (Precio de venta o canon de arrendamiento en USD)
+    - currency: 'USD' | 'HNL' (Moneda de la transacción)
+    - status: 'Disponible' | 'Alquilada' | 'Vendida' | 'En Mantenimiento'
+    - bedrooms: number (Cantidad de habitaciones)
+    - bathrooms: number (Cantidad de cuartos de baño completos o medios)
+    - parkingSpots: number (Capacidad de estacionamientos vehiculares)
+    - description: string (Reseña técnica y comercial del inmueble)
+    - features: string[] (Arreglo de comodidades y características)
+    - images: string[] (Arreglo de URLs de imágenes en alta resolución)
+    - ownerId: string (Identificador del propietario registrado)
+    - ownerName: string (Nombre del propietario)
+    - assignedAgentId: string (Identificador del asesor inmobiliario asignado)
+    - assignedAgentName: string (Nombre del asesor asignado)
+    - yearBuilt: number (Año de edificación o entrega del inmueble)
+
+4.6 LeaseContract (Entidad de Contrato de Arrendamiento)
+    - id: string (Identificador interno del contrato, ej: 'ctr-001')
+    - contractNumber: string (Número de expediente legal, ej: 'CTR-2024-089')
+    - propertyId: string (Identificador de la propiedad objeto de arriendo)
+    - propertyTitle: string (Título del inmueble arrendado)
+    - propertyCode: string (Código identificador de la propiedad)
+    - tenantId: string (Identificador del usuario inquilino)
+    - tenantName: string (Nombre completo del arrendatario)
+    - tenantEmail: string (Correo electrónico del arrendatario)
+    - tenantPhone: string (Teléfono directo del arrendatario)
+    - tenantNationalId: string (DNI / Cédula del arrendatario compareciente)
+    - managerName: string (Nombre del encargado / administrador inmobiliario)
+    - managerEmail: string (Correo electrónico del encargado)
+    - managerPhone: string (Teléfono del encargado)
+    - receivingBankAccount: string (Número de cuenta bancaria oficial que recibe el pago)
+    - receivingBankName: string (Nombre del banco que recibe los fondos)
+    - paymentMethodUsed: string (Método de pago pactado, ej: 'Transferencia Bancaria')
+    - ownerId: string (Identificador del arrendador propietario)
+    - ownerName: string (Nombre del propietario)
+    - startDate: string (Fecha de inicio de vigencia, formato ISO YYYY-MM-DD)
+    - endDate: string (Fecha de vencimiento de vigencia, formato ISO YYYY-MM-DD)
+    - monthlyRent: number (Monto de renta pactado por periodo mensual)
+    - depositAmount: number (Monto de depósito en garantía entregado)
+    - currency: 'USD' | 'HNL' (Divisa de pago)
+    - status: 'Vigente' | 'Por Vencer' | 'Finalizado' | 'En Mora'
+    - agentName: string (Nombre del agente responsable)
+    - isSignedDigitally: boolean (Indicador de validación de firma electrónica)
+    - signedDate: string [opcional] (Fecha en que se estampó la firma)
+    - clauses: string[] (Arreglo de cláusulas legales y condiciones pactadas)
+
+4.7 PaymentTransaction (Entidad de Transacción de Pago)
+    - id: string (Identificador único de pago, ej: 'pay-001')
+    - receiptNumber: string (Folio correlativo del comprobante, ej: 'REC-2024-001')
+    - propertyId: string (Identificador del inmueble asociado)
+    - propertyTitle: string (Nombre de la propiedad)
+    - contractId: string (Identificador del contrato vinculado)
+    - payerName: string (Nombre de quien realiza el desembolso)
+    - payerEmail: string (Correo del pagador)
+    - amount: number (Monto cancelado)
+    - currency: 'USD' | 'HNL' (Divisa)
+    - date: string (Fecha de ejecución del pago)
+    - type: 'Pago Renta' | 'Depósito Garantía' | 'Comisión Venta' | 'Servicios'
+    - paymentMethod: 'Tarjeta de Crédito' | 'Tarjeta de Débito' | 'Transferencia Bancaria'
+    - status: 'Completado' | 'Pendiente' | 'Rechazado'
+    - referenceCode: string (Código de autorización financiera)
+    - monthCovered: string [opcional] (Periodo mensual cancelado, ej: 'Noviembre 2024')
+
+4.8 MaintenanceRequest (Entidad de Solicitud de Reparación)
+    - id: string (Identificador de solicitud, ej: 'mnt-001')
+    - ticketNumber: string (Número de ticket de soporte, ej: 'MNT-2024-001')
+    - propertyId: string (Identificador del inmueble)
+    - propertyTitle: string (Nombre del inmueble)
+    - propertyAddress: string (Dirección del inmueble)
+    - requestedBy: string (Nombre de quien solicita el trabajo)
+    - requesterRole: 'tenant' | 'owner' | 'agent'
+    - date: string (Fecha de reporte)
+    - type: 'Preventivo' | 'Correctivo' | 'Emergencia'
+    - priority: 'Alta' | 'Media' | 'Baja'
+    - status: 'Pendiente' | 'En Proceso' | 'Reparado' | 'Cancelado'
+    - description: string (Descripción de la avería o solicitud)
+    - estimatedCost: number [opcional] (Presupuesto proyectado)
+    - actualCost: number [opcional] (Costo final liquidado)
+    - contractorName: string [opcional] (Técnico o empresa contratista asignada)
+    - resolutionNotes: string [opcional] (Dictamen técnico de resolución)
+
+4.9 CalendarEvent (Entidad de Evento de Calendario y Citas)
+    - id: string (Identificador único de evento)
+    - title: string (Título del evento o cita)
+    - date: string (Fecha en formato YYYY-MM-DD)
+    - time: string (Hora en formato militar HH:mm)
+    - type: 'Visita Inmueble' | 'Reunión Propietario' | 'Firma Contrato' | 'Mantenimiento'
+    - priority: 'Alta' | 'Media' | 'Baja'
+    - assignedTo: string (Nombre del asesor o administrador responsable)
+    - propertyTitle: string [opcional] (Inmueble objeto del evento)
+    - clientName: string [opcional] (Nombre del cliente o inquilino participante)
+    - clientEmail: string [opcional] (Correo del participante)
+    - notes: string [opcional] (Notas preparatorias y acuerdos)
+
+4.10 MessageThread y Message (Entidades de Mensajería Interna)
+    - MessageThread:
+      * id: string (Identificador del hilo)
+      * contactName: string (Nombre del contacto participante)
+      * contactEmail: string (Correo del contacto)
+      * contactPhone: string (Teléfono)
+      * propertyTitle: string (Propiedad asociada al hilo de conversación)
+      * unread: boolean (Indicador de mensajes pendientes de lectura)
+      * messages: Message[] (Historial cronológico de mensajes)
+    - Message:
+      * id: string (Identificador de mensaje)
+      * sender: 'user' | 'support' | 'client' (Emisor del mensaje)
+      * senderName: string (Nombre visible del emisor)
+      * text: string (Cuerpo del mensaje)
+      * timestamp: string (Hora o fecha de envío)
+
+4.11 SystemLog (Entidad de Auditoría e Inmutabilidad RF-0801)
+    - id: string (Identificador del log)
+    - timestamp: string (Marca temporal precisa de la operación)
+    - action: string (Verbo u operación realizada, ej: 'Cambio de Rol')
+    - module: string (Módulo afectado, ej: 'Usuarios', 'Contratos', 'Bancos')
+    - userName: string (Nombre del usuario que ejecutó la acción)
+    - role: UserRole (Rol que ostentaba el ejecutor al momento de la acción)
+    - details: string (Detalle pormenorizado de los datos modificados)
+
+--------------------------------------------------------------------------------
+5. MECANISMO DE PERSISTENCIA Y SINCRONIZACIÓN LOCAL
+--------------------------------------------------------------------------------
+El sistema utiliza almacenamiento estructurado en el navegador cliente mediante 
+LocalStorage bajo las claves de aislamiento:
+- 'terranova_users': Colección de usuarios, credenciales y estados.
+- 'terranova_properties': Catálogo de propiedades e inventario.
+- 'terranova_contracts': Contratos de arrendamiento y firmas.
+- 'terranova_settings': Configuración global, datos de atención y cuentas bancarias.
+- 'terranova_payments': Historial de transacciones financieras.
+- 'terranova_maintenance': Órdenes de trabajo y reparaciones.
+- 'terranova_calendar': Citas y agendas de trabajo de asesores e inquilinos.
+- 'terranova_logs': Registro inmutable de auditoría forense.
+- 'terranova_notifications': Registro y estados de notificaciones de nuevas solicitudes.
+- 'terranova_smtp_config': Parámetros de conexión al servidor de correo SMTP transaccional.
+- 'terranova_exchange_rate_hnl': Tasa de cambio financiera en tiempo real (USD a Lempiras HNL).
+- 'terranova_currency': Divisa activa seleccionada (USD / HNL).
+- 'terranova_comparison': Lista de identificadores de inmuebles en comparativa.
+
+Esta arquitectura garantiza que las modificaciones realizadas por el administrador 
+(como la edición de los números de atención al cliente, la designación de cuentas 
+bancarias receptoras o la reasignación de roles) persistan entre recargas de página 
+sin requerir reinstalación.
+
+--------------------------------------------------------------------------------
+6. LENGUAJES Y TECNOLOGÍAS UTILIZADAS EN EL SISTEMA
+--------------------------------------------------------------------------------
+El sistema Terranova Gestión Inmobiliaria está construido mediante una arquitectura 
+moderna basada en estándares de la industria del desarrollo de software:
+
+6.1 Lenguajes de Programación y Tipado:
+    - TypeScript 5.x:
+      Lenguaje principal de desarrollo. Proporciona tipado estático estricto, 
+      detección temprana de errores en tiempo de compilación, interfaces rigurosas 
+      para entidades inmobiliarias (Property, LeaseContract, User, MaintenanceRequest), 
+      y contratos de tipos para el estado global y callbacks.
+    - JavaScript (ECMAScript 2022+ / Node.js):
+      Lenguaje de ejecución en runtime para el motor V8 de los navegadores y el 
+      entorno de desarrollo local. Proporciona soporte asíncrono moderno, promesas, 
+      desestructuración, manipulación funcional de arreglos y APIs nativas Web.
+
+6.2 Lenguajes de Marcado y Presentación:
+    - HTML5 Semántico:
+      Estructura base de la interfaz web, cumpliendo con estándares W3C, accesibilidad 
+      WAI-ARIA (roles, etiquetas y navegación por teclado) y manejo nativo de formularios, 
+      modales y metadatos SEO.
+    - CSS3 (Cascading Style Sheets) con Tailwind CSS:
+      Lenguaje de hojas de estilo utilizado a través del motor utilitario Tailwind CSS. 
+      Implementa diseño responsivo adaptativo (móvil, tableta y escritorio), variables 
+      de color de identidad corporativa Terranova, microanimaciones y efectos de 
+      desenfoque de cristal (glassmorphism / backdrop-blur).
+
+6.3 Lenguajes de Consulta y Persistencia:
+    - SQL (Structured Query Language):
+      Lenguaje de definición (DDL), manipulación (DML) y consulta (DQL) utilizado 
+      en el script de base de datos relacional (MySQL 8.0+, MariaDB 10.4+, PostgreSQL 14+). 
+      Implementa tablas normalizadas, llaves primarias y foráneas con integridad 
+      referencial en cascada, índices únicos, tipos ENUM y restricciones CHECK.
+    - JSON (JavaScript Object Notation):
+      Formato estándar para serialización y persistencia local estructurada 
+      (LocalStorage), configuración de roles y sincronización de datos.
+
+6.4 Lenguaje de Patrones y Validaciones:
+    - Regex (Expresiones Regulares ECMAScript & PCRE):
+      Utilizado tanto en el código TypeScript frontend como en las restricciones 
+      CHECK de la base de datos SQL para:
+      * Validar DNI de Honduras (exactamente 13 dígitos numéricos: ^[0-9]{13}$).
+      * Validar números de teléfono permitiendo exclusivamente números y los 
+        signos '+' y '-' como separadores: ^\+?[0-9]+(-[0-9]+)*$
+
+6.5 Frameworks, Librerías y Herramientas:
+    - React 18: Librería de componentes reactivos declarativos y hooks (useState, useEffect, useMemo, createContext).
+    - Vite: Entorno de construcción ultrarrápido con Hot Module Replacement (HMR).
+    - Lucide React: Colección de iconos vectoriales SVG limpios y consistentes.
+
+--------------------------------------------------------------------------------
+7. ESPECIFICACIÓN DE DNI DE HONDURAS Y TELÉFONOS EN BASE DE DATOS
+--------------------------------------------------------------------------------
+Conforme a la retroalimentación técnica y auditoría del sistema:
+
+7.1 Documento Nacional de Identificación (DNI de Honduras):
+    - Conforme a la Ley del Registro Nacional de las Personas (RNP) de Honduras, el 
+      DNI consta estrictamente de 13 dígitos numéricos distribuidos tradicionalmente 
+      como Depto (2) + Municipio (2) + Año (4) + Folio (5). Ejemplo: 0801199512345.
+    - En la base de datos relacional se normaliza de dos formas:
+      a) Columna 'national_id' CHAR(13) con restricción:
+         CHECK (CHAR_LENGTH(national_id) = 13 AND national_id REGEXP '^[0-9]{13}$')
+      b) Columna 'national_id_num' BIGINT para garantizar su almacenamiento como 
+         entero puro de 13 dígitos (dado que 13 dígitos supera el límite máximo de 
+         un INT de 32 bits de 2,147,483,647, el tipo entero correcto en SQL es BIGINT).
+
+7.2 Teléfonos (phone):
+    - En la base de datos relacional se proveen dos representaciones:
+      a) Almacenamiento con formato: 'phone' VARCHAR(25) con restricción CHECK:
+         CHECK (phone REGEXP '^\\+?[0-9]+(-[0-9]+)*$')
+         Garantiza que el número de teléfono únicamente contenga dígitos numéricos 
+         y los signos '+' (código de país) y '-' (separador de área/bloque), 
+         prohibiendo espacios, paréntesis o letras (ej: +504-9876-5432 o 2238-9000).
+      b) Almacenamiento numérico puro: 'phone_number' BIGINT para almacenamiento 
+         directo de números telefónicos internacionales E.164 (ej: 50498765432).
+
+7.3 Llaves Primarias de Tabla (id):
+    - En el script SQL actualizado, las tablas relacionales cuentan con llaves 
+      primarias numéricas secuenciales 'id INT AUTO_INCREMENT PRIMARY KEY', 
+      garantizando máximo desempeño y optimización de árboles B+ en índices.
+
+--------------------------------------------------------------------------------
+8. MARCO LEGAL MONETARIO DE HONDURAS (DECRETO 131-98 Y CONVERSIÓN DE DIVISAS)
+--------------------------------------------------------------------------------
+8.1 Contexto Jurídico en Honduras:
+    - Según la Ley Monetaria de Honduras (Decreto Ley No. 35) y regulaciones del 
+      Banco Central de Honduras (BCH) así como el Decreto Legislativo 131-98, el 
+      Lempira (HNL) es la moneda de curso legal y forzoso en el territorio nacional.
+    - En el rubro inmobiliario, la ley prohíbe exigir el pago exclusivamente en 
+      moneda extranjera (dólares estadounidenses) sin facultar al arrendatario o 
+      comprador a liquidar en moneda nacional (Lempiras) al tipo de cambio oficial 
+      vigente determinado por el Banco Central de Honduras.
+    - Cualquier contrato de arrendamiento o cotización debe contemplar y permitir 
+      la contraprestación en Lempiras HNL.
+
+8.2 Implementación en el Sistema:
+    - Conmutador Global de Moneda (USD $ / HNL L.): Ubicado de forma destacada en la 
+      barra de navegación (Navbar) y en el catálogo inmobiliario.
+    - Motor de Conversión en Tiempo Real: Convierte dinámicamente precios de venta, 
+      cánones de alquiler mensual, montos de garantía, expensas y recibos 
+      utilizando la tasa de cambio oficial (1 USD = 24.85 HNL).
+    - Las cláusulas de contratos de arrendamiento generadas estipulan expresamente: 
+      "El precio mensual de la renta es de $X.XX USD (o su equivalente en Lempiras 
+      HNL al tipo de cambio oficial del BCH según Decreto 131-98)".
+
+--------------------------------------------------------------------------------
+9. MÓDULO DE COMPARADOR DE PROPIEDADES (HASTA 3 INMUEBLES)
+--------------------------------------------------------------------------------
+9.1 Objetivo:
+    Permitir a clientes e inquilinos comparar simultáneamente hasta tres (3) propiedades 
+    distintas para analizar características técnicas y financieras antes de agendar 
+    una visita presencial o solicitar un contrato.
+
+9.2 Características Comparadas:
+    - Imagen de fachada con enlace directo a ficha detallada.
+    - Título comercial y código único (ej: CAS-001, APT-002).
+    - Precio en la divisa activa seleccionada (USD / HNL).
+    - Precio por metro cuadrado ($/m² o L./m²).
+    - Dimensiones totales de área en metros cuadrados.
+    - Distribución espacial: número de dormitorios, baños completos y estacionamientos.
+    - Tipo de inmueble y tipo de operación (Alquiler / Venta).
+    - Ubicación exacta (colonia, sector y ciudad).
+    - Año de edificación o entrega.
+    - Matriz de amenidades y servicios (Circuito cerrado, piscina, cisterna, etc.).
+    - Indicadores destacados: Mejor precio, mayor amplitud y mayor número de cuartos.
+    - Acciones directas: Agendar Visita Inmobiliaria e Imprimir Ficha Comparativa.
+
+--------------------------------------------------------------------------------
+10. SISTEMA DE NOTIFICACIONES EN TIEMPO REAL PARA NUEVAS SOLICITUDES
+--------------------------------------------------------------------------------
+10.1 Objetivo:
+     Alertar inmediatamente al personal administrativo y comercial cuando se 
+     generan nuevas solicitudes operativas en el portal.
+
+10.2 Tipos de Notificaciones Soportadas:
+     - 'visit_request': Nuevas solicitudes de citas presenciales o virtuales 
+       agendadas por clientes en el catálogo. Incluye fecha, hora y propiedad.
+     - 'maintenance_request': Nuevos tickets de incidencias o reparaciones 
+       creados por inquilinos o propietarios.
+     - 'new_lead': Nuevos prospectos comerciales captados con presupuesto y preferencia.
+     - 'contract_signed': Contratos de arrendamiento firmados electrónicamente.
+     - 'payment_received': Comprobantes de pago de renta reportados.
+
+10.3 Interfaz de Alertas:
+     - Campana de notificaciones en la barra de navegación con contador de pendientes.
+     - Filtros por categoría (Todas, No Leídas, Citas, Mantenimiento, Prospectos).
+     - Botón "Atender Solicitud" que redirige automáticamente a la sección 
+       pertinente (Calendario, CRM, Panel de Mantenimiento o Contratos).
+
+--------------------------------------------------------------------------------
+11. INTEGRACIÓN CON SERVIDOR DE CORREO SMTP (ENVÍO REAL Y CONFIGURACIÓN)
+--------------------------------------------------------------------------------
+11.1 Conectividad con Servidor de Correo Transaccional (MTA / SMTP):
+     - El sistema integra un cliente y módulo de conexión con servidores de correo 
+       estándar (SMTP/STARTTLS/SSL) tales como Gmail, Outlook/Office 365, Amazon SES, 
+       SendGrid o servidores dedicados de hosting cPanel/Postfix.
+     - Se eliminaron las bandejas simuladas internas del cliente para operar mediante 
+       parámetros reales de infraestructura de correo.
+
+11.2 Panel de Configuración y Diagnóstico SMTP (Exclusivo Administrador):
+     - Ubicado en el panel de Administración -> pestaña Configuración.
+     - Parámetros administrables:
+       * Host / Servidor SMTP (ej: smtp.terranova.hn o smtp.gmail.com).
+       * Puerto de enlace (587 para STARTTLS / 465 para SSL estricto).
+       * Cuenta de usuario / correo autenticado.
+       * Contraseña de aplicación o token criptográfico.
+       * Dirección de correo del remitente ('From') y nombre visible de la inmobiliaria.
+     - Herramienta de Diagnóstico: Botón "Probar Conexión con Servidor" que envía 
+       un ping de socket y handshake de prueba al servidor SMTP para certificar 
+       la validez de las credenciales y el estado operativo del servicio.
+
+11.3 Flujo de Seguridad para Recuperación de Contraseñas y Notificaciones:
+     - Las solicitudes de restablecimiento de contraseña generan un token seguro OTP 
+       de 6 dígitos y remiten el código directamente a la casilla de correo del usuario.
+     - En el modal de acceso, el usuario introduce su correo y luego valida el código 
+       recibido para registrar su nueva contraseña cifrada.
+
+--------------------------------------------------------------------------------
+12. GESTOR DE CARGA Y ADJUNTADO DE IMÁGENES DE INMUEBLES
+--------------------------------------------------------------------------------
+12.1 Tres Mecanismos de Adjuntado:
+     1. Carga de Archivos Locales: El usuario puede seleccionar fotografías 
+        desde su disco duro o dispositivo móvil; el sistema las convierte 
+        automáticamente a Base64 Data URLs en tiempo real para visualización inmediata.
+     2. Arrastrar y Soltar (Drag & Drop): Zona interactiva para soltar imágenes 
+        directamente en el navegador.
+     3. Galería de Fotos Arquitectónicas Preconfiguradas: Acceso a un banco de 
+        imágenes de alta calidad representativas de la arquitectura residencial 
+        hondureña (fachadas, salas, cocinas, habitaciones máster, baños, piscinas y terrenos).
+     4. Enlace Directo por URL: Pegado manual de URLs externas.
+
+--------------------------------------------------------------------------------
+13. PLANTILLAS ESTÁNDARES DE CONTRATOS, FIRMA DIGITAL Y VENTAS
+--------------------------------------------------------------------------------
+13.1 Gestión de Plantillas Corporativas (AdminDashboard -> Plantillas de Contrato):
+     - El Administrador puede subir y resguardar archivos oficiales en formato PDF o Word (.doc/.docx).
+     - Las plantillas se vinculan por modalidad: Arrendamiento Residencial, Venta Directa o Venta a Plazos.
+     - Al generar un nuevo contrato, el usuario o agente puede seleccionar una plantilla estándar
+       previamente aprobada, asegurando el cumplimiento de las cláusulas legales institucionales.
+
+13.2 Reglas de Concurrencia y Cancelación de Contratos:
+     - Un inquilino puede arrendar o adquirir más de un inmueble.
+     - Un inmueble NO puede tener dos inquilinos concurrentes con contratos en estado 'Activo'.
+     - Los contratos pueden ser cancelados con registro formal del motivo de resolución 
+       (mutuo acuerdo, incumplimiento de cláusula, etc.), liberando el inmueble automáticamente a 'Disponible'.
+
+13.3 Venta Directa y Venta a Plazos:
+     - En venta directa, el traspaso traslada la titularidad a un único nuevo dueño y liquida la comisión total.
+     - En venta a plazos, se definen prima inicial, plazo en años, cuotas mensuales e intereses pactados.
+     - Confidencialidad de ganancias: Ni el agente ni el comprador pueden ver la tasa de ganancia neta
+       del propietario; dicho desglose es exclusivo del propietario del terreno y el Administrador.
+
+13.4 Firma Digital e Impresión Oficial:
+     - Módulo de firma digital en pantalla (trazado táctil/mouse) o carga de imagen/documento escaneado.
+     - El contrato firmado habilita el botón "Descargar Contrato Firmado" y emite el documento oficial 
+       con sello de validez legal, bloqueando su modificación posterior.
+
+--------------------------------------------------------------------------------
+14. ARQUITECTURA DE RESILIENCIA Y MANEJO DE ERRORES (404 Y 500)
+--------------------------------------------------------------------------------
+14.1 Página de Error 404 (NotFoundView.tsx):
+     - Estilo arquitectónico inmobiliario con código visual "Catastro No Encontrado".
+     - Campo de búsqueda rápida de inmuebles para reconducir al usuario sin fricción.
+     - Accesos directos a categorías populares (Casas, Terrenos, Apartamentos, Alquiler, Venta).
+     - Botón para explorar el catálogo completo y consultar el manual de uso.
+
+14.2 Página de Error 500 / 503 (ServerErrorView.tsx):
+     - Manejo de excepciones no controladas y fallas de sistema o servidor.
+     - Diagnóstico técnico colapsable con visualización de pila de llamadas (stack trace)
+       y botón de copiado al portapapeles para soporte técnico.
+     - Botón de recuperación "Reintentar Conexión" y botón "Limpiar Caché y Restablecer Datos" 
+       para depurar posibles corrupciones de almacenamiento local.
+
+14.3 Global React ErrorBoundary (GlobalErrorBoundary.tsx):
+     - Envuelve la raíz de la aplicación en main.tsx, interceptando fallos en el árbol de componentes.
+     - Previene pantallas en blanco catastróficas y muestra ServerErrorView con opción de reinicio seguro.
+
+--------------------------------------------------------------------------------
+15. DETECCIÓN DE NUEVA CUENTA, TOUR GUIADO Y MANUALES DE USO
+--------------------------------------------------------------------------------
+15.1 Detección Automática de Primer Ingreso:
+     - Al registrarse una nueva cuenta (registerUser), se inicializa con isNewUser: true y hasCompletedTour: false.
+     - Detección persistente en localStorage mediante la clave 'terranova_tour_${userId}'.
+     - Si el usuario es nuevo, se despliega tras 1.2 segundos el WelcomeOnboardingBanner con invitación
+       al tour y al manual de usuario.
+
+15.2 Tour Interactivo Guiado (GuidedTourModal.tsx):
+     - 6 pasos explicativos interactivos con barra de progreso, insignias de rol y controles de avance/retroceso:
+       * Paso 1: Bienvenida a Terranova y Propósito de la Plataforma.
+       * Paso 2: Catálogo Inmobiliario y Filtros de Búsqueda Avanzada.
+       * Paso 3: Ficha Técnica, Citas y Solicitudes Legales.
+       * Paso 4: Contratos Formales, Modalidades de Venta y Firma Digital.
+       * Paso 5: Portal Privado por Rol (Inquilino, Propietario, Agente, Administrador).
+       * Paso 6: Cumplimiento Ley Monetaria de Honduras (BCH) y Soporte Técnico.
+
+15.3 Manual de Usuario Adaptativo y Restricción por Tipo de Usuario (UserManualModal.tsx):
+     - Acceso Estricto según el Perfil Activo (RBAC):
+       * Visitante / Cliente (guest/client): Visualiza ÚNICAMENTE lo que puede realizar (catálogo, filtros avanzados, comparador de 3 inmuebles, cambio de moneda USD/HNL en vivo con tasa BCH, agendar visitas presenciales, contacto WhatsApp/PBX y registro de cuenta).
+       * Inquilino / Arrendatario (tenant): Visualiza ÚNICAMENTE funciones de inquilino (portal de inquilino, firma digital en pantalla, descarga de contrato oficial firmado, reporte de pagos con comprobante QR, solicitud de mantenimiento. Regla: un inquilino puede tener múltiples contratos, pero cada inmueble solo un inquilino vigente).
+       * Asesor Inmobiliario (agent): Visualiza ÚNICAMENTE herramientas comerciales (emisión de contratos de venta directa, a plazos y renta, carga única de documentos.pdf firmados, solicitud de invalidación justificada al administrador, comisiones de venta. Restricción: el agente NO ve la tasa pactada del dueño del 80%).
+       * Propietario (owner): Visualiza ÚNICAMENTE el portal de dueño (estado de inmuebles, cobro del 100% en venta directa o depósito proporcional en ventas a plazos, confidencialidad absoluta del 80% neto entre dueño y administración, traspaso a dueño único adquirente).
+       * Técnico de Sistemas / DBA (technician): Visualiza ÚNICAMENTE herramientas técnicas (consola SQL en vivo, exportación de database_schema.sql, montaje en MySQL/PostgreSQL y auditoría de integridad).
+       * Contratista (contractor): Visualiza órdenes de servicio de mantenimiento, reportes de averías y facturación de mano de obra.
+       * Administrador (admin): Guía maestra de alta dirección (plantillas Word/PDF, cancelación de contratos, nómina de comisiones, asignación de roles y políticas) con selector de supervisión para consultar guías de otros roles en tareas de soporte al usuario.
+     - Depuración de Pie de Página (Footer.tsx):
+       * Eliminación de componentes de prueba y manuales genéricos del footer público para evitar accesos indebidos o desorden visual; el acceso al manual queda canalizado de manera segura en la barra de navegación y panel de usuario de acuerdo al rol autenticado.
+     - Buscador de texto en tiempo real para localizar cualquier función en segundos.
+     - Botón de impresión ("Imprimir / Guardar en PDF").
+
+--------------------------------------------------------------------------------
+16. BASE DE DATOS LOCAL: SCRIPTS SQL Y MANUAL DE INSTALACIÓN
+--------------------------------------------------------------------------------
+16.1 Scripts DDL y DML Relacionales:
+     - Archivo SQL completo ubicado en: /documentacion/script_base_de_datos.sql y /script_base_de_datos.sql.
+     - Compatible con MySQL 8.0 / MariaDB (XAMPP / phpMyAdmin) y PostgreSQL 14+ (pgAdmin / Supabase).
+     - Contiene 12 tablas relacionales normalizadas:
+       1. roles (Roles de usuario del sistema)
+       2. users (Cuentas con contraseñas cifradas, número de cuenta y teléfonos)
+       3. role_permissions (Matriz de permisos granulares por módulo)
+       4. properties (Inmuebles residenciales, comerciales y terrenos con geolocalización)
+       5. contract_templates (Plantillas estándar de contratos PDF/Word resguardadas)
+       6. lease_contracts (Contratos de arriendo, venta directa y a plazos con comisiones)
+       7. payment_transactions (Conciliación de pagos, depósitos y comisiones de venta)
+       8. maintenance_requests (Incidencias y órdenes de trabajo asignadas a contratistas)
+       9. company_settings (Configuración general, RTN, cuentas bancarias y parámetros SMTP)
+       10. system_audit_logs (Bitácora inmutable de auditoría con fecha, usuario e IP)
+       11. employees (Colaboradores y salarios base)
+       12. payroll_records (Liquidaciones de nómina e incentivos de ventas)
+
+16.2 Módulo de Base de Datos y Exportación (DatabaseExportModal.tsx):
+     - Restricción Estricta de Seguridad: NO está disponible para el Administrador general.
+     - Acceso Exclusivo para el Personal Técnico de Sistemas & DBA (rol 'technician').
+     - Segregación de Responsabilidades (SoD): Los directores y administradores gestionan
+       la operación inmobiliaria, contratos y nómina, mientras que la base de datos SQL y 
+       los scripts de infraestructura son competencia exclusiva del área técnica.
+     - Selector de sintaxis MySQL vs PostgreSQL.
+     - Visualizador con botón de Copiar al Portapapeles (1 clic) y Descargar Archivo .sql.
+     - Exportación complementaria de respaldo completo de datos en formato JSON (.json).
+
+16.3 Guía de Puesta en Marcha Local (/DATABASE_LOCAL_SETUP.md):
+     - Instrucciones paso a paso para desplegar en XAMPP (Apache + MySQL), Docker Compose, y PostgreSQL.
+
+--------------------------------------------------------------------------------
+17. MÓDULO TÉCNICO Y CONTROL DE MANTENIMIENTO (MaintenanceDashboard.tsx)
+--------------------------------------------------------------------------------
+17.1 Espacio de Trabajo Especializado para el Rol Técnico ('technician'):
+     - Componente exclusivo: /src/components/technician/MaintenanceDashboard.tsx.
+     - Aislamiento comercial total: El técnico no tiene visibilidad ni acceso a las funciones
+       administrativas comerciales (contratos de compraventa, cuotas, nóminas, comisiones de agentes
+       ni márgenes de propietarios).
+     - Reubicación de Base de Datos: Se retiró el acceso directo a la base de datos de la barra
+       superior general y se trasladó a una pestaña técnica específica y resguardada dentro del
+       MaintenanceDashboard ("Servicios de Base de Datos & SQL").
+
+17.2 Gestión de Tickets de Mantenimiento y Averías:
+     - Control de tickets por prioridad (Emergencia, Alta, Media, Baja) y estado (Pendiente, En Proceso,
+       Reparado, Cancelado).
+     - Actualización de diagnósticos técnicos, técnico responsable asignado, horas y costos reales.
+     - Vinculación y consumo directo de insumos de bodega en cada reparación efectuada.
+
+17.3 Inventario de Insumos, Repuestos y Kardex de Bodega:
+     - Catálogo de suministros clasificados en 7 categorías: Plomería, Electricidad, Cerrajería,
+       Climatización, Pintura, Herramientas y General.
+     - Parámetros por ítem: Código único (INS-...), stock actual, stock mínimo de seguridad, unidad,
+       costo unitario USD/HNL y ubicación exacta en almacén.
+     - Operaciones: Entrada / Reabastecimiento con motivo, Salida / Despacho manual y consumo en tickets.
+     - Registro inmutable de movimientos (Kardex técnico).
+     - Alertas automáticas de stock crítico y valorización total de inventario.
+
+17.4 Manuales de Uso y Manual Técnico Integrados:
+     - Manual Operativo de Mantenimiento: Protocolos de atención, SLAs de respuesta, seguridad
+       ocupacional (EPP), procedimientos de fontanería/electricidad y checklist de entrega conforme.
+     - Manual Técnico de Sistemas & Base de Datos: Arquitectura de la aplicación (React 19 + TypeScript +
+       Tailwind), diccionario de datos de las 12 tablas relacionales, esquemas DDL/DML y montaje local.
+
+================================================================================
+FIN DEL DOCUMENTO TÉCNICO - TERRANOVA GESTIÓN INMOBILIARIA S. DE R.L.
+================================================================================
+

@@ -1,0 +1,6 @@
+{
+  "name": "TERRANOVA - Sistema de Gestión Inmobiliaria",
+  "description": "Plataforma integral de gestión inmobiliaria para administración de propiedades, contratos de arrendamiento, pagos en línea, seguimiento de visitas y mantenimiento.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
